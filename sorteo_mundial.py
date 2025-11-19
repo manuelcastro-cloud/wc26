@@ -87,9 +87,14 @@ if "botones" not in st.session_state:
 def mostrar_bombo_objetos(bombo):
     for item in bombo:
         color = conf_colors.get(item["confederacion"], "#FFFFFF")
-        st.markdown(f"<div style='background-color:{color}; padding:8px; border-radius:8px; margin-bottom:4px'>{item['pais']}</div>", unsafe_allow_html=True)
+        st.markdown(
+            f"<div style='padding:8px; border-radius:8px; margin-bottom:4px'>"
+            f"<span style='display:inline-block; width:8px; height:24px; background-color:{color}; margin-right:8px; vertical-align:middle'></span>"
+            f"{item['pais']}</div>",
+            unsafe_allow_html=True
+        )
 
-# --- Función mostrar grupos con rayita de confederación ---
+# --- Función mostrar grupos con rayita de confederación al inicio ---
 def mostrar_grupos_coloreados():
     cols = st.columns(6)
     for i, letra in enumerate(st.session_state.grupos):
@@ -105,8 +110,8 @@ def mostrar_grupos_coloreados():
                             conf = match["confederacion"]
                             break
                     color = conf_colors.get(conf,"#000000")
-                    # Celda con rayita vertical al final
-                    html_table += f"<tr><td style='padding:4px; border-right:8px solid {color}'>{pais}</td></tr>"
+                    # Celda con rayita vertical al inicio
+                    html_table += f"<tr><td style='padding:4px; border-left:8px solid {color}'>{pais}</td></tr>"
                 else:
                     html_table += "<tr><td style='padding:4px'>---</td></tr>"
             html_table += "</table>"
@@ -172,6 +177,13 @@ def limpiar_grupos():
     for letra in st.session_state.grupos:
         st.session_state.grupos[letra] = [None]*4
     st.session_state.botones = {"b1": True, "b2": False, "b3": False, "b4": False}
+
+# --- Mostrar guía de colores ---
+st.subheader("🎨 Guía de confederaciones")
+cols_conf = st.columns(len(conf_colors))
+for i, conf in enumerate(conf_colors):
+    with cols_conf[i]:
+        st.markdown(f"<div style='display:flex; align-items:center'><div style='width:20px; height:20px; background-color:{conf_colors[conf]}; margin-right:4px'></div>{conf}</div>", unsafe_allow_html=True)
 
 # --- Mostrar Bombos ---
 st.subheader("🎟 Bombos")
