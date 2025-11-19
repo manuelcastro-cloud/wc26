@@ -69,16 +69,16 @@ bombo4 = [
 if "grupos" not in st.session_state:
     st.session_state.grupos = {chr(65+i): [None]*4 for i in range(12)}  # A-L
 
-# --- Estado de botones ---
+# --- Estado secuencial de botones ---
 if "botones" not in st.session_state:
-    st.session_state.botones = {"b1": True, "b2": True, "b3": True, "b4": True}
+    st.session_state.botones = {"b1": True, "b2": False, "b3": False, "b4": False}
 
 # --- Función mostrar bombos ---
 def mostrar_bombo_objetos(bombo, color):
     for item in bombo:
         st.markdown(f"<div style='background-color:{color}; padding:8px; border-radius:8px; margin-bottom:4px'>{item['pais']}</div>", unsafe_allow_html=True)
 
-# --- Función repartir Bombo 1 ---
+# --- Repartir Bombo 1 con restricciones fijas ---
 def repartir_bombo1_con_restricciones():
     global bombo1
     if not bombo1: return
@@ -95,10 +95,12 @@ def repartir_bombo1_con_restricciones():
         if i < len(paises_restantes):
             st.session_state.grupos[letra][0] = paises_restantes[i]["pais"]
     bombo1.clear()
+    # Actualiza botones secuencialmente
     st.session_state.botones["b1"] = False
+    st.session_state.botones["b2"] = True
 
-# --- Función repartir Bombo 2-4 con restricciones ---
-def repartir_bombo_con_restricciones(bombo, posicion, key):
+# --- Repartir Bombo 2-4 con restricciones ---
+def repartir_bombo_con_restricciones(bombo, posicion, key, habilitar_siguiente=None):
     if not bombo: return
     paises = bombo.copy()
     random.shuffle(paises)
@@ -129,13 +131,15 @@ def repartir_bombo_con_restricciones(bombo, posicion, key):
                     st.session_state.grupos[letra][posicion]=pais_obj["pais"]
                     break
     bombo.clear()
-    st.session_state.botones[key]=False
+    st.session_state.botones[key] = False
+    if habilitar_siguiente:
+        st.session_state.botones[habilitar_siguiente] = True
 
-# --- Limpiar grupos y habilitar botones ---
+# --- Limpiar grupos y reset botones ---
 def limpiar_grupos():
     for letra in st.session_state.grupos:
         st.session_state.grupos[letra] = [None]*4
-    st.session_state.botones = {"b1": True, "b2": True, "b3": True, "b4": True}
+    st.session_state.botones = {"b1": True, "b2": False, "b3": False, "b4": False}
 
 # --- Mostrar bombos ---
 st.subheader("🎟 Bombos")
@@ -153,10 +157,10 @@ with col_b1:
         if st.button("Repartir Bombo 1"): repartir_bombo1_con_restricciones()
 with col_b2: 
     if st.session_state.botones["b2"]:
-        if st.button("Repartir Bombo 2"): repartir_bombo_con_restricciones(bombo2, 1,"b2")
+        if st.button("Repartir Bombo 2"): repartir_bombo_con_restricciones(bombo2, 1,"b2","b3")
 with col_b3: 
     if st.session_state.botones["b3"]:
-        if st.button("Repartir Bombo 3"): repartir_bombo_con_restricciones(bombo3, 2,"b3")
+        if st.button("Repartir Bombo 3"): repartir_bombo_con_restricciones(bombo3, 2,"b3","b4")
 with col_b4: 
     if st.session_state.botones["b4"]:
         if st.button("Repartir Bombo 4"): repartir_bombo_con_restricciones(bombo4, 3,"b4")
