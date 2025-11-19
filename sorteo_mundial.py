@@ -74,20 +74,7 @@ def mostrar_bombo_objetos(bombo, color):
     for item in bombo:
         st.markdown(f"<div style='background-color:{color}; padding:8px; border-radius:8px; margin-bottom:4px'>{item['pais']}</div>", unsafe_allow_html=True)
 
-# --- Función para repartir bombos completos (genérico) ---
-def repartir_bombo(bombo, posicion):
-    if not bombo:
-        st.warning("Bombo vacío")
-        return
-    paises = bombo.copy()
-    random.shuffle(paises)
-    for i, letra in enumerate(st.session_state.grupos):
-        if i < len(paises):
-            st.session_state.grupos[letra][posicion] = paises[i]["pais"]
-    bombo.clear()
-    st.success(f"Bombo repartido en los grupos en posición {posicion+1}")
-
-# --- Función específica para Bombo 1 con restricciones ---
+# --- Función para repartir Bombo 1 con restricciones ---
 def repartir_bombo1_con_restricciones():
     if not bombo1:
         st.warning("Bombo 1 vacío")
@@ -111,6 +98,32 @@ def repartir_bombo1_con_restricciones():
             st.session_state.grupos[letra][0] = paises_restantes[i]["pais"]
     bombo1.clear()
     st.success("Bombo 1 repartido con restricciones")
+
+# --- Función para repartir Bombo 2 con restricción UEFA ---
+def repartir_bombo2_con_restriccion_uefa():
+    if not bombo2:
+        st.warning("Bombo 2 vacío")
+        return
+    
+    paises_restantes = bombo2.copy()
+    random.shuffle(paises_restantes)
+    
+    for letra in st.session_state.grupos:
+        pos = 1  # Bombo 2 corresponde a la posición 1
+        if st.session_state.grupos[letra][pos] is None:
+            # Buscar un país que cumpla la restricción UEFA
+            for i, pais_obj in enumerate(paises_restantes):
+                # Contar cuántos UEFA ya tiene el grupo
+                uefa_count = sum(1 for p in st.session_state.grupos[letra] if p in [x["pais"] for x in bombo1+bombo2+bombo3+bombo4 if x["confederacion"]=="UEFA"])
+                if pais_obj["confederacion"] == "UEFA" and uefa_count >= 2:
+                    continue  # No puede asignar más UEFA
+                # Asignar el país al grupo
+                st.session_state.grupos[letra][pos] = pais_obj["pais"]
+                paises_restantes.pop(i)
+                break
+    # Limpiar bombo2
+    bombo2.clear()
+    st.success("Bombo 2 repartido con restricción UEFA (máx 2 por grupo)")
 
 # --- Botón limpiar ---
 def limpiar_grupos():
@@ -145,7 +158,7 @@ with col_b1:
         repartir_bombo1_con_restricciones()
 with col_b2:
     if st.button("Repartir Bombo 2"):
-        repartir_bombo(bombo2, 1)
+        repartir_bombo2_con_restriccion_uefa()
 with col_b3:
     if st.button("Repartir Bombo 3"):
         repartir_bombo(bombo3, 2)
