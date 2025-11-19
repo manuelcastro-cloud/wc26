@@ -1,10 +1,8 @@
-# archivo: sorteo_mundial_interactivo_bombos.py
-
 import streamlit as st
 import random
 
 st.set_page_config(page_title="Sorteo Mundial Interactivo", layout="wide")
-st.title("🌍 Simulador Interactivo de Sorteo Mundial con Bombos Visuales")
+st.title("🌍 Simulador Interactivo de Sorteo Mundial con Bombos y Posiciones")
 
 # --- Bombos como listas de objetos ---
 bombo1 = [
@@ -67,30 +65,30 @@ bombo4 = [
     {"pais": "UEFA4", "confederacion": "UEFA"}
 ]
 
-# --- Inicializamos 12 grupos si no existen ---
+# --- Inicializamos 12 grupos con 4 posiciones vacías ---
 if "grupos" not in st.session_state:
-    st.session_state.grupos = {chr(65+i): [] for i in range(12)}  # A-L
+    st.session_state.grupos = {chr(65+i): [None]*4 for i in range(12)}  # A-L
 
-# --- Funciones ---
+# --- Función para mostrar bombos ---
 def mostrar_bombo_objetos(bombo, color):
     for item in bombo:
         st.markdown(f"<div style='background-color:{color}; padding:8px; border-radius:8px; margin-bottom:4px'>{item['pais']}</div>", unsafe_allow_html=True)
 
-def sacar_pais(bombo):
+# --- Función genérica para sacar país de un bombo y actualizar grupos ---
+def sacar_y_asignar(bombo, posicion):
     if bombo:
         pais = random.choice(bombo)
         bombo.remove(pais)
-        return pais
-    return None
+        # Asignar al grupo correspondiente (llenando secuencialmente)
+        for letra in st.session_state.grupos:
+            if st.session_state.grupos[letra][posicion] is None:
+                st.session_state.grupos[letra][posicion] = pais["pais"]
+                st.success(f"{pais['pais']} asignado al Grupo {letra} en posición {posicion+1}")
+                break
+    else:
+        st.warning("Bombo vacío")
 
-def asignar_al_grupo(pais):
-    for letra in st.session_state.grupos:
-        if len(st.session_state.grupos[letra]) < 4:
-            st.session_state.grupos[letra].append(pais["pais"])
-            return letra
-    return None
-
-# --- Mostrar bombos visualmente ---
+# --- Mostrar bombos ---
 st.subheader("🎟 Bombos")
 col1, col2, col3, col4 = st.columns(4)
 with col1:
@@ -106,47 +104,27 @@ with col4:
     st.subheader("Bombo 4")
     mostrar_bombo_objetos(bombo4, "#FF69B4")
 
-# --- Botones para sorteo ---
+# --- Botones para sorteo por bombo ---
 st.markdown("---")
-st.subheader("🎲 Sacar país de cada bombo")
+st.subheader("🎲 Sacar país de cada bombo y asignar a grupos")
 
 col_b1, col_b2, col_b3, col_b4 = st.columns(4)
 
 with col_b1:
     if st.button("Sacar de Bombo 1"):
-        pais = sacar_pais(bombo1)
-        if pais:
-            grupo = asignar_al_grupo(pais)
-            st.success(f"{pais['pais']} asignado al Grupo {grupo}")
-        else:
-            st.warning("Bombo 1 vacío")
+        sacar_y_asignar(bombo1, 0)
 
 with col_b2:
     if st.button("Sacar de Bombo 2"):
-        pais = sacar_pais(bombo2)
-        if pais:
-            grupo = asignar_al_grupo(pais)
-            st.success(f"{pais['pais']} asignado al Grupo {grupo}")
-        else:
-            st.warning("Bombo 2 vacío")
+        sacar_y_asignar(bombo2, 1)
 
 with col_b3:
     if st.button("Sacar de Bombo 3"):
-        pais = sacar_pais(bombo3)
-        if pais:
-            grupo = asignar_al_grupo(pais)
-            st.success(f"{pais['pais']} asignado al Grupo {grupo}")
-        else:
-            st.warning("Bombo 3 vacío")
+        sacar_y_asignar(bombo3, 2)
 
 with col_b4:
     if st.button("Sacar de Bombo 4"):
-        pais = sacar_pais(bombo4)
-        if pais:
-            grupo = asignar_al_grupo(pais)
-            st.success(f"{pais['pais']} asignado al Grupo {grupo}")
-        else:
-            st.warning("Bombo 4 vacío")
+        sacar_y_asignar(bombo4, 3)
 
 # --- Mostrar tablas de grupos ---
 st.markdown("---")
