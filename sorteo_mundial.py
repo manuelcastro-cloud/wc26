@@ -98,7 +98,7 @@ def repartir_bombo1_con_restricciones():
     bombo1.clear()
     st.success("Bombo 1 repartido con restricciones")
 
-# --- Función para repartir bombos 2-4 con restricciones de confederación ---
+# --- Función para repartir bombos con restricción confederación ---
 def repartir_bombo_con_restricciones(bombo, posicion):
     global bombo2, bombo3, bombo4
     if not bombo:
@@ -109,31 +109,39 @@ def repartir_bombo_con_restricciones(bombo, posicion):
     random.shuffle(paises)
     
     for pais_obj in paises:
-        # Buscar grupos válidos para asignar
-        grupos_validos = []
-        for letra, grupo in st.session_state.grupos.items():
+        asignado = False
+        intentos = list(st.session_state.grupos.keys())
+        random.shuffle(intentos)
+        for letra in intentos:
+            grupo = st.session_state.grupos[letra]
+            # Confed de los paises ya en el grupo
             confs = []
-            # Contamos confederaciones existentes en el grupo
-            for p in grupo:
+            for idx, p in enumerate(grupo):
                 if p:
-                    # Buscar confederacion del país en cualquier bombo
-                    for b in [bombo1, bombo2, bombo3, bombo4]:
-                        match = next((x for x in b if x["pais"] == p), None)
+                    for b in [bombo1,bombo2,bombo3,bombo4]:
+                        match = next((x for x in b if x["pais"]==p), None)
                         if match:
                             confs.append(match["confederacion"])
-            # Contamos cantidad de UEFA ya asignados
             uefa_count = confs.count("UEFA")
-            # Condiciones: no repetir confederación, y máximo 2 UEFA
-            if pais_obj["confederacion"] == "UEFA" and uefa_count < 2:
-                grupos_validos.append(letra)
-            elif pais_obj["confederacion"] != "UEFA" and pais_obj["confederacion"] not in confs:
-                grupos_validos.append(letra)
-        if grupos_validos:
-            elegido = random.choice(grupos_validos)
-            st.session_state.grupos[elegido][posicion] = pais_obj["pais"]
-    
+            # Validación
+            if pais_obj["confederacion"] == "UEFA":
+                if uefa_count < 2 and grupo[posicion] is None:
+                    st.session_state.grupos[letra][posicion] = pais_obj["pais"]
+                    asignado = True
+                    break
+            else:
+                if pais_obj["confederacion"] not in confs and grupo[posicion] is None:
+                    st.session_state.grupos[letra][posicion] = pais_obj["pais"]
+                    asignado = True
+                    break
+        if not asignado:
+            # Si no se pudo asignar al azar respetando todo, forzamos en cualquier grupo vacío
+            for letra in st.session_state.grupos:
+                if st.session_state.grupos[letra][posicion] is None:
+                    st.session_state.grupos[letra][posicion] = pais_obj["pais"]
+                    break
     bombo.clear()
-    st.success(f"Bombo repartido en posición {posicion+1} con restricciones de confederación")
+    st.success(f"Bombo repartido en posición {posicion+1} con restricciones")
 
 # --- Botón limpiar ---
 def limpiar_grupos():
