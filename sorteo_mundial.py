@@ -94,7 +94,7 @@ def mostrar_bombo_objetos(bombo):
             unsafe_allow_html=True
         )
 
-# --- Función mostrar grupos con rayita de confederación al inicio ---
+# --- Función mostrar grupos ---
 def mostrar_grupos_coloreados():
     cols = st.columns(6)
     for i, letra in enumerate(st.session_state.grupos):
@@ -105,9 +105,7 @@ def mostrar_grupos_coloreados():
                     conf = None
                     for b in [bombo1,bombo2,bombo3,bombo4]:
                         match = next((x for x in b if x["pais"]==pais), None)
-                        if match:
-                            conf = match["confederacion"]
-                            break
+                        if match: conf = match["confederacion"]; break
                     color = conf_colors.get(conf,"#000000")
                     html_table += f"<tr><td style='padding:4px; border-left:8px solid {color}'>{pais}</td></tr>"
                 else:
@@ -176,6 +174,13 @@ def limpiar_grupos():
         st.session_state.grupos[letra] = [None]*4
     st.session_state.botones = {"b1": True, "b2": False, "b3": False, "b4": False}
 
+# --- Botones con on_click ---
+def repartir_bombo1_click(): repartir_bombo1_con_restricciones()
+def repartir_bombo2_click(): repartir_bombo_con_restricciones(bombo2,1,"b2","b3")
+def repartir_bombo3_click(): repartir_bombo_con_restricciones(bombo3,2,"b3","b4")
+def repartir_bombo4_click(): repartir_bombo_con_restricciones(bombo4,3,"b4")
+def limpiar_grupos_click(): limpiar_grupos()
+
 # --- Mostrar guía de colores ---
 st.subheader("🎨 Guía de confederaciones")
 cols_conf = st.columns(len(conf_colors))
@@ -194,21 +199,11 @@ with col4: st.markdown("**Bombo 4**"); mostrar_bombo_objetos(bombo4)
 # --- Botones ---
 st.markdown("---")
 col_b1, col_b2, col_b3, col_b4, col_b5 = st.columns(5)
-with col_b1:
-    if st.button("Repartir Bombo 1", disabled=not st.session_state.botones["b1"]):
-        repartir_bombo1_con_restricciones()
-with col_b2:
-    if st.button("Repartir Bombo 2", disabled=not st.session_state.botones["b2"]):
-        repartir_bombo_con_restricciones(bombo2,1,"b2","b3")
-with col_b3:
-    if st.button("Repartir Bombo 3", disabled=not st.session_state.botones["b3"]):
-        repartir_bombo_con_restricciones(bombo3,2,"b3","b4")
-with col_b4:
-    if st.button("Repartir Bombo 4", disabled=not st.session_state.botones["b4"]):
-        repartir_bombo_con_restricciones(bombo4,3,"b4")
-with col_b5:
-    if st.button("Limpiar Grupos"):
-        limpiar_grupos()
+with col_b1: st.button("Repartir Bombo 1", disabled=not st.session_state.botones["b1"], on_click=repartir_bombo1_click)
+with col_b2: st.button("Repartir Bombo 2", disabled=not st.session_state.botones["b2"], on_click=repartir_bombo2_click)
+with col_b3: st.button("Repartir Bombo 3", disabled=not st.session_state.botones["b3"], on_click=repartir_bombo3_click)
+with col_b4: st.button("Repartir Bombo 4", disabled=not st.session_state.botones["b4"], on_click=repartir_bombo4_click)
+with col_b5: st.button("Limpiar Grupos", on_click=limpiar_grupos_click)
 
 # --- Mostrar Grupos ---
 st.markdown("---")
