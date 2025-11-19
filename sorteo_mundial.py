@@ -89,7 +89,7 @@ def mostrar_bombo_objetos(bombo):
         color = conf_colors.get(item["confederacion"], "#FFFFFF")
         st.markdown(f"<div style='background-color:{color}; padding:8px; border-radius:8px; margin-bottom:4px'>{item['pais']}</div>", unsafe_allow_html=True)
 
-# --- Función mostrar grupos con colores ---
+# --- Función mostrar grupos con rayita de confederación ---
 def mostrar_grupos_coloreados():
     cols = st.columns(6)
     for i, letra in enumerate(st.session_state.grupos):
@@ -97,15 +97,16 @@ def mostrar_grupos_coloreados():
             html_table = "<table style='border-collapse:collapse; width:100%'>"
             for idx, pais in enumerate(st.session_state.grupos[letra]):
                 if pais:
-                    # Buscar la confederación en los bombos
+                    # Buscar confederación
                     conf = None
                     for b in [bombo1,bombo2,bombo3,bombo4]:
                         match = next((x for x in b if x["pais"]==pais), None)
                         if match:
                             conf = match["confederacion"]
                             break
-                    color = conf_colors.get(conf,"#FFFFFF")
-                    html_table += f"<tr><td style='background-color:{color}; padding:4px'>{pais}</td></tr>"
+                    color = conf_colors.get(conf,"#000000")
+                    # Celda con rayita vertical al final
+                    html_table += f"<tr><td style='padding:4px; border-right:8px solid {color}'>{pais}</td></tr>"
                 else:
                     html_table += "<tr><td style='padding:4px'>---</td></tr>"
             html_table += "</table>"
@@ -198,7 +199,7 @@ with col_b4:
 with col_b5:
     if st.button("Limpiar Grupos"): limpiar_grupos()
 
-# --- Mostrar Grupos con colores ---
+# --- Mostrar Grupos con rayitas ---
 st.markdown("---")
 st.subheader("📋 Grupos actuales")
 mostrar_grupos_coloreados()
