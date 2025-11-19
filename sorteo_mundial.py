@@ -185,13 +185,21 @@ for i, conf in enumerate(conf_colors):
     with cols_conf[i]:
         st.markdown(f"<div style='display:flex; align-items:center'><div style='width:20px; height:20px; background-color:{conf_colors[conf]}; margin-right:4px'></div>{conf}</div>", unsafe_allow_html=True)
 
-# --- Mostrar Bombos ---
+# --- Mostrar Bombos con título ---
 st.subheader("🎟 Bombos")
 col1, col2, col3, col4 = st.columns(4)
-with col1: mostrar_bombo_objetos(bombo1)
-with col2: mostrar_bombo_objetos(bombo2)
-with col3: mostrar_bombo_objetos(bombo3)
-with col4: mostrar_bombo_objetos(bombo4)
+with col1:
+    st.markdown("**Bombo 1**")
+    mostrar_bombo_objetos(bombo1)
+with col2:
+    st.markdown("**Bombo 2**")
+    mostrar_bombo_objetos(bombo2)
+with col3:
+    st.markdown("**Bombo 3**")
+    mostrar_bombo_objetos(bombo3)
+with col4:
+    st.markdown("**Bombo 4**")
+    mostrar_bombo_objetos(bombo4)
 
 # --- Botones ---
 st.markdown("---")
@@ -199,18 +207,26 @@ col_b1, col_b2, col_b3, col_b4, col_b5 = st.columns(5)
 with col_b1:
     if st.button("Repartir Bombo 1", disabled=not st.session_state.botones["b1"]):
         repartir_bombo1_con_restricciones()
+        mostrar_bombo_objetos(bombo1)
 with col_b2:
     if st.button("Repartir Bombo 2", disabled=not st.session_state.botones["b2"]):
         repartir_bombo_con_restricciones(bombo2,1,"b2","b3")
+        mostrar_bombo_objetos(bombo2)
 with col_b3:
     if st.button("Repartir Bombo 3", disabled=not st.session_state.botones["b3"]):
         repartir_bombo_con_restricciones(bombo3,2,"b3","b4")
+        mostrar_bombo_objetos(bombo3)
 with col_b4:
     if st.button("Repartir Bombo 4", disabled=not st.session_state.botones["b4"]):
         repartir_bombo_con_restricciones(bombo4,3,"b4")
+        mostrar_bombo_objetos(bombo4)
 with col_b5:
     if st.button("Limpiar Grupos"):
         limpiar_grupos()
+        mostrar_bombo_objetos(bombo1)
+        mostrar_bombo_objetos(bombo2)
+        mostrar_bombo_objetos(bombo3)
+        mostrar_bombo_objetos(bombo4)
 
 # --- Mostrar Grupos con rayitas ---
 st.markdown("---")
