@@ -4,6 +4,17 @@ import random
 st.set_page_config(page_title="Sorteo Mundial Interactivo", layout="wide")
 st.title("🌍 Simulador Interactivo de Sorteo Mundial con Bombos y Restricciones")
 
+# --- Colores por confederación ---
+conf_colors = {
+    "CONCACAF": "#FFD700",   # amarillo
+    "CONMEBOL": "#ADFF2F",   # verde
+    "UEFA": "#1E90FF",       # azul
+    "CAF": "#FF6347",        # rojo
+    "AFC": "#FF69B4",        # rosa
+    "OFC": "#9370DB",        # morado
+    "Variable": "#D3D3D3"    # gris
+}
+
 # --- Bombos como listas de objetos ---
 bombo1 = [
     {"pais": "México", "confederacion": "CONCACAF"},
@@ -69,16 +80,38 @@ bombo4 = [
 if "grupos" not in st.session_state:
     st.session_state.grupos = {chr(65+i): [None]*4 for i in range(12)}  # A-L
 
-# --- Estado secuencial de botones ---
 if "botones" not in st.session_state:
     st.session_state.botones = {"b1": True, "b2": False, "b3": False, "b4": False}
 
 # --- Función mostrar bombos ---
-def mostrar_bombo_objetos(bombo, color):
+def mostrar_bombo_objetos(bombo):
     for item in bombo:
+        color = conf_colors.get(item["confederacion"], "#FFFFFF")
         st.markdown(f"<div style='background-color:{color}; padding:8px; border-radius:8px; margin-bottom:4px'>{item['pais']}</div>", unsafe_allow_html=True)
 
-# --- Repartir Bombo 1 con restricciones fijas ---
+# --- Función mostrar grupos con colores ---
+def mostrar_grupos_coloreados():
+    cols = st.columns(6)
+    for i, letra in enumerate(st.session_state.grupos):
+        with cols[i % 6]:
+            html_table = "<table style='border-collapse:collapse; width:100%'>"
+            for idx, pais in enumerate(st.session_state.grupos[letra]):
+                if pais:
+                    # Buscar la confederación en los bombos
+                    conf = None
+                    for b in [bombo1,bombo2,bombo3,bombo4]:
+                        match = next((x for x in b if x["pais"]==pais), None)
+                        if match:
+                            conf = match["confederacion"]
+                            break
+                    color = conf_colors.get(conf,"#FFFFFF")
+                    html_table += f"<tr><td style='background-color:{color}; padding:4px'>{pais}</td></tr>"
+                else:
+                    html_table += "<tr><td style='padding:4px'>---</td></tr>"
+            html_table += "</table>"
+            st.markdown(f"<b>Grupo {letra}</b><br>{html_table}", unsafe_allow_html=True)
+
+# --- Funciones repartir bombos ---
 def repartir_bombo1_con_restricciones():
     global bombo1
     if not bombo1: return
@@ -95,11 +128,9 @@ def repartir_bombo1_con_restricciones():
         if i < len(paises_restantes):
             st.session_state.grupos[letra][0] = paises_restantes[i]["pais"]
     bombo1.clear()
-    # Actualiza botones secuencialmente
     st.session_state.botones["b1"] = False
     st.session_state.botones["b2"] = True
 
-# --- Repartir Bombo 2-4 con restricciones ---
 def repartir_bombo_con_restricciones(bombo, posicion, key, habilitar_siguiente=None):
     if not bombo: return
     paises = bombo.copy()
@@ -135,42 +166,39 @@ def repartir_bombo_con_restricciones(bombo, posicion, key, habilitar_siguiente=N
     if habilitar_siguiente:
         st.session_state.botones[habilitar_siguiente] = True
 
-# --- Limpiar grupos y reset botones ---
+# --- Limpiar ---
 def limpiar_grupos():
     for letra in st.session_state.grupos:
         st.session_state.grupos[letra] = [None]*4
     st.session_state.botones = {"b1": True, "b2": False, "b3": False, "b4": False}
 
-# --- Mostrar bombos ---
+# --- Mostrar Bombos ---
 st.subheader("🎟 Bombos")
 col1, col2, col3, col4 = st.columns(4)
-with col1: mostrar_bombo_objetos(bombo1, "#FFD700")
-with col2: mostrar_bombo_objetos(bombo2, "#ADFF2F")
-with col3: mostrar_bombo_objetos(bombo3, "#1E90FF")
-with col4: mostrar_bombo_objetos(bombo4, "#FF69B4")
+with col1: mostrar_bombo_objetos(bombo1)
+with col2: mostrar_bombo_objetos(bombo2)
+with col3: mostrar_bombo_objetos(bombo3)
+with col4: mostrar_bombo_objetos(bombo4)
 
 # --- Botones ---
 st.markdown("---")
 col_b1, col_b2, col_b3, col_b4, col_b5 = st.columns(5)
-with col_b1: 
+with col_b1:
     if st.session_state.botones["b1"]:
         if st.button("Repartir Bombo 1"): repartir_bombo1_con_restricciones()
-with col_b2: 
+with col_b2:
     if st.session_state.botones["b2"]:
-        if st.button("Repartir Bombo 2"): repartir_bombo_con_restricciones(bombo2, 1,"b2","b3")
-with col_b3: 
+        if st.button("Repartir Bombo 2"): repartir_bombo_con_restricciones(bombo2,1,"b2","b3")
+with col_b3:
     if st.session_state.botones["b3"]:
-        if st.button("Repartir Bombo 3"): repartir_bombo_con_restricciones(bombo3, 2,"b3","b4")
-with col_b4: 
+        if st.button("Repartir Bombo 3"): repartir_bombo_con_restricciones(bombo3,2,"b3","b4")
+with col_b4:
     if st.session_state.botones["b4"]:
-        if st.button("Repartir Bombo 4"): repartir_bombo_con_restricciones(bombo4, 3,"b4")
-with col_b5: 
+        if st.button("Repartir Bombo 4"): repartir_bombo_con_restricciones(bombo4,3,"b4")
+with col_b5:
     if st.button("Limpiar Grupos"): limpiar_grupos()
 
-# --- Mostrar grupos ---
+# --- Mostrar Grupos con colores ---
 st.markdown("---")
 st.subheader("📋 Grupos actuales")
-cols = st.columns(6)
-for i, letra in enumerate(st.session_state.grupos):
-    with cols[i % 6]:
-        st.table({f"Grupo {letra}": st.session_state.grupos[letra]})
+mostrar_grupos_coloreados()
