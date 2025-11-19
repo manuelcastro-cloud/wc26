@@ -102,7 +102,6 @@ def mostrar_grupos_coloreados():
             html_table = "<table style='border-collapse:collapse; width:100%'>"
             for idx, pais in enumerate(st.session_state.grupos[letra]):
                 if pais:
-                    # Buscar confederación
                     conf = None
                     for b in [bombo1,bombo2,bombo3,bombo4]:
                         match = next((x for x in b if x["pais"]==pais), None)
@@ -110,7 +109,6 @@ def mostrar_grupos_coloreados():
                             conf = match["confederacion"]
                             break
                     color = conf_colors.get(conf,"#000000")
-                    # Celda con rayita vertical al inicio
                     html_table += f"<tr><td style='padding:4px; border-left:8px solid {color}'>{pais}</td></tr>"
                 else:
                     html_table += "<tr><td style='padding:4px'>---</td></tr>"
@@ -127,15 +125,18 @@ def repartir_bombo1_con_restricciones():
         if obj:
             st.session_state.grupos[grupo][0] = obj["pais"]
             bombo1.remove(obj)
+            mostrar_grupos_coloreados()
     paises_restantes = bombo1.copy()
     grupos_restantes = [l for l in st.session_state.grupos if l not in fijas.values()]
     random.shuffle(paises_restantes)
     for i, letra in enumerate(grupos_restantes):
         if i < len(paises_restantes):
             st.session_state.grupos[letra][0] = paises_restantes[i]["pais"]
+            mostrar_grupos_coloreados()
     bombo1.clear()
     st.session_state.botones["b1"] = False
     st.session_state.botones["b2"] = True
+    mostrar_grupos_coloreados()
 
 def repartir_bombo_con_restricciones(bombo, posicion, key, habilitar_siguiente=None):
     if not bombo: return
@@ -156,21 +157,25 @@ def repartir_bombo_con_restricciones(bombo, posicion, key, habilitar_siguiente=N
             uefa_count = confs.count("UEFA")
             if pais_obj["confederacion"]=="UEFA" and uefa_count<2 and grupo[posicion] is None:
                 st.session_state.grupos[letra][posicion]=pais_obj["pais"]
+                mostrar_grupos_coloreados()
                 asignado=True
                 break
             elif pais_obj["confederacion"]!="UEFA" and pais_obj["confederacion"] not in confs and grupo[posicion] is None:
                 st.session_state.grupos[letra][posicion]=pais_obj["pais"]
+                mostrar_grupos_coloreados()
                 asignado=True
                 break
         if not asignado:
             for letra in st.session_state.grupos:
                 if st.session_state.grupos[letra][posicion] is None:
                     st.session_state.grupos[letra][posicion]=pais_obj["pais"]
+                    mostrar_grupos_coloreados()
                     break
     bombo.clear()
     st.session_state.botones[key] = False
     if habilitar_siguiente:
         st.session_state.botones[habilitar_siguiente] = True
+    mostrar_grupos_coloreados()
 
 # --- Limpiar ---
 def limpiar_grupos():
@@ -207,19 +212,15 @@ col_b1, col_b2, col_b3, col_b4, col_b5 = st.columns(5)
 with col_b1:
     if st.button("Repartir Bombo 1", disabled=not st.session_state.botones["b1"]):
         repartir_bombo1_con_restricciones()
-        mostrar_bombo_objetos(bombo1)
 with col_b2:
     if st.button("Repartir Bombo 2", disabled=not st.session_state.botones["b2"]):
         repartir_bombo_con_restricciones(bombo2,1,"b2","b3")
-        mostrar_bombo_objetos(bombo2)
 with col_b3:
     if st.button("Repartir Bombo 3", disabled=not st.session_state.botones["b3"]):
         repartir_bombo_con_restricciones(bombo3,2,"b3","b4")
-        mostrar_bombo_objetos(bombo3)
 with col_b4:
     if st.button("Repartir Bombo 4", disabled=not st.session_state.botones["b4"]):
         repartir_bombo_con_restricciones(bombo4,3,"b4")
-        mostrar_bombo_objetos(bombo4)
 with col_b5:
     if st.button("Limpiar Grupos"):
         limpiar_grupos()
@@ -227,6 +228,7 @@ with col_b5:
         mostrar_bombo_objetos(bombo2)
         mostrar_bombo_objetos(bombo3)
         mostrar_bombo_objetos(bombo4)
+        mostrar_grupos_coloreados()
 
 # --- Mostrar Grupos con rayitas ---
 st.markdown("---")
