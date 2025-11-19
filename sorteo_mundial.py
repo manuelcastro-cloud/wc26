@@ -197,19 +197,20 @@ with col4: mostrar_bombo_objetos(bombo4)
 st.markdown("---")
 col_b1, col_b2, col_b3, col_b4, col_b5 = st.columns(5)
 with col_b1:
-    if st.session_state.botones["b1"]:
-        if st.button("Repartir Bombo 1"): repartir_bombo1_con_restricciones()
+    if st.button("Repartir Bombo 1", disabled=not st.session_state.botones["b1"]):
+        repartir_bombo1_con_restricciones()
 with col_b2:
-    if st.session_state.botones["b2"]:
-        if st.button("Repartir Bombo 2"): repartir_bombo_con_restricciones(bombo2,1,"b2","b3")
+    if st.button("Repartir Bombo 2", disabled=not st.session_state.botones["b2"]):
+        repartir_bombo_con_restricciones(bombo2,1,"b2","b3")
 with col_b3:
-    if st.session_state.botones["b3"]:
-        if st.button("Repartir Bombo 3"): repartir_bombo_con_restricciones(bombo3,2,"b3","b4")
+    if st.button("Repartir Bombo 3", disabled=not st.session_state.botones["b3"]):
+        repartir_bombo_con_restricciones(bombo3,2,"b3","b4")
 with col_b4:
-    if st.session_state.botones["b4"]:
-        if st.button("Repartir Bombo 4"): repartir_bombo_con_restricciones(bombo4,3,"b4")
+    if st.button("Repartir Bombo 4", disabled=not st.session_state.botones["b4"]):
+        repartir_bombo_con_restricciones(bombo4,3,"b4")
 with col_b5:
-    if st.button("Limpiar Grupos"): limpiar_grupos()
+    if st.button("Limpiar Grupos"):
+        limpiar_grupos()
 
 # --- Mostrar Grupos con rayitas ---
 st.markdown("---")
