@@ -1,12 +1,12 @@
-# archivo: sorteo_mundial_objetos.py
+# archivo: sorteo_mundial_interactivo.py
 
 import streamlit as st
 import random
 
-st.set_page_config(page_title="Simulador de Sorteo Mundial", layout="wide")
-st.title("🌍 Simulador de Sorteo Mundial - Bombos con Objetos")
+st.set_page_config(page_title="Sorteo Mundial Interactivo", layout="wide")
+st.title("🌍 Simulador Interactivo de Sorteo Mundial")
 
-# --- Definimos bombos como listas de objetos ---
+# --- Bombos como listas de objetos ---
 bombo1 = [
     {"pais": "México", "confederacion": "CONCACAF"},
     {"pais": "Canadá", "confederacion": "CONCACAF"},
@@ -67,42 +67,73 @@ bombo4 = [
     {"pais": "UEFA4", "confederacion": "UEFA"}
 ]
 
-# --- Mostrar bombos visualmente solo con el nombre del país ---
-col1, col2, col3, col4 = st.columns(4)
+# --- Inicializamos 12 grupos ---
+if "grupos" not in st.session_state:
+    st.session_state.grupos = {chr(65+i): [] for i in range(12)}  # A-L
 
-def mostrar_bombo_objetos(bombo, color):
-    for item in bombo:
-        st.markdown(f"<div style='background-color:{color}; padding:8px; border-radius:8px; margin-bottom:4px'>{item['pais']}</div>", unsafe_allow_html=True)
+# --- Función para sacar país de un bombo ---
+def sacar_pais(bombo):
+    if bombo:
+        pais = random.choice(bombo)
+        bombo.remove(pais)
+        return pais
+    return None
 
-with col1:
-    st.subheader("Bombo 1")
-    mostrar_bombo_objetos(bombo1, "#FFD700")
+# --- Función para asignar al siguiente grupo disponible ---
+def asignar_al_grupo(pais):
+    # Grupos llenos si ya tienen 4 países
+    for letra in st.session_state.grupos:
+        if len(st.session_state.grupos[letra]) < 4:
+            st.session_state.grupos[letra].append(pais["pais"])
+            return letra
+    return None
 
-with col2:
-    st.subheader("Bombo 2")
-    mostrar_bombo_objetos(bombo2, "#ADFF2F")
+# --- Botones para cada bombo ---
+st.subheader("🎲 Sacar país de cada bombo")
 
-with col3:
-    st.subheader("Bombo 3")
-    mostrar_bombo_objetos(bombo3, "#1E90FF")
+col_b1, col_b2, col_b3, col_b4 = st.columns(4)
 
-with col4:
-    st.subheader("Bombo 4")
-    mostrar_bombo_objetos(bombo4, "#FF69B4")
+with col_b1:
+    if st.button("Sacar de Bombo 1"):
+        pais = sacar_pais(bombo1)
+        if pais:
+            grupo = asignar_al_grupo(pais)
+            st.success(f"{pais['pais']} asignado al Grupo {grupo}")
+        else:
+            st.warning("Bombo 1 vacío")
 
-# --- Sorteo al azar respetando objetos ---
+with col_b2:
+    if st.button("Sacar de Bombo 2"):
+        pais = sacar_pais(bombo2)
+        if pais:
+            grupo = asignar_al_grupo(pais)
+            st.success(f"{pais['pais']} asignado al Grupo {grupo}")
+        else:
+            st.warning("Bombo 2 vacío")
+
+with col_b3:
+    if st.button("Sacar de Bombo 3"):
+        pais = sacar_pais(bombo3)
+        if pais:
+            grupo = asignar_al_grupo(pais)
+            st.success(f"{pais['pais']} asignado al Grupo {grupo}")
+        else:
+            st.warning("Bombo 3 vacío")
+
+with col_b4:
+    if st.button("Sacar de Bombo 4"):
+        pais = sacar_pais(bombo4)
+        if pais:
+            grupo = asignar_al_grupo(pais)
+            st.success(f"{pais['pais']} asignado al Grupo {grupo}")
+        else:
+            st.warning("Bombo 4 vacío")
+
+# --- Mostrar las 12 tablas de grupos ---
 st.markdown("---")
-st.subheader("🎲 Sacar país al azar de un bombo")
+st.subheader("📋 Grupos actuales")
 
-bombo_seleccionado = st.selectbox("Selecciona un bombo", ["Bombo 1", "Bombo 2", "Bombo 3", "Bombo 4"])
-if st.button("Sacar país al azar"):
-    if bombo_seleccionado == "Bombo 1":
-        item = random.choice(bombo1)
-    elif bombo_seleccionado == "Bombo 2":
-        item = random.choice(bombo2)
-    elif bombo_seleccionado == "Bombo 3":
-        item = random.choice(bombo3)
-    else:
-        item = random.choice(bombo4)
-    
-    st.success(f"🌍 País sacado: {item['pais']} (Confederación: {item['confederacion']})")
+cols = st.columns(6)  # 2 filas de 6 columnas
+for i, letra in enumerate(st.session_state.grupos):
+    with cols[i % 6]:
+        st.table({f"Grupo {letra}": st.session_state.grupos[letra]})
