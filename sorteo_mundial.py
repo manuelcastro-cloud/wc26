@@ -74,19 +74,24 @@ def mostrar_bombo_objetos(bombo, color):
     for item in bombo:
         st.markdown(f"<div style='background-color:{color}; padding:8px; border-radius:8px; margin-bottom:4px'>{item['pais']}</div>", unsafe_allow_html=True)
 
-# --- Función genérica para sacar país de un bombo y actualizar grupos ---
-def sacar_y_asignar(bombo, posicion):
-    if bombo:
-        pais = random.choice(bombo)
-        bombo.remove(pais)
-        # Asignar al grupo correspondiente (llenando secuencialmente)
-        for letra in st.session_state.grupos:
-            if st.session_state.grupos[letra][posicion] is None:
-                st.session_state.grupos[letra][posicion] = pais["pais"]
-                st.success(f"{pais['pais']} asignado al Grupo {letra} en posición {posicion+1}")
-                break
-    else:
+# --- Función para repartir todos los países de un bombo al azar en los grupos ---
+def repartir_bombo(bombo, posicion):
+    if not bombo:
         st.warning("Bombo vacío")
+        return
+    paises = bombo.copy()
+    random.shuffle(paises)
+    for i, letra in enumerate(st.session_state.grupos):
+        if i < len(paises):
+            st.session_state.grupos[letra][posicion] = paises[i]["pais"]
+    bombo.clear()
+    st.success(f"Bombo repartido en los grupos en posición {posicion+1}")
+
+# --- Botón limpiar ---
+def limpiar_grupos():
+    for letra in st.session_state.grupos:
+        st.session_state.grupos[letra] = [None]*4
+    st.success("✅ Grupos limpiados")
 
 # --- Mostrar bombos ---
 st.subheader("🎟 Bombos")
@@ -106,25 +111,25 @@ with col4:
 
 # --- Botones para sorteo por bombo ---
 st.markdown("---")
-st.subheader("🎲 Sacar país de cada bombo y asignar a grupos")
+st.subheader("🎲 Repartir bombo completo a grupos")
 
-col_b1, col_b2, col_b3, col_b4 = st.columns(4)
+col_b1, col_b2, col_b3, col_b4, col_b5 = st.columns(5)
 
 with col_b1:
-    if st.button("Sacar de Bombo 1"):
-        sacar_y_asignar(bombo1, 0)
-
+    if st.button("Repartir Bombo 1"):
+        repartir_bombo(bombo1, 0)
 with col_b2:
-    if st.button("Sacar de Bombo 2"):
-        sacar_y_asignar(bombo2, 1)
-
+    if st.button("Repartir Bombo 2"):
+        repartir_bombo(bombo2, 1)
 with col_b3:
-    if st.button("Sacar de Bombo 3"):
-        sacar_y_asignar(bombo3, 2)
-
+    if st.button("Repartir Bombo 3"):
+        repartir_bombo(bombo3, 2)
 with col_b4:
-    if st.button("Sacar de Bombo 4"):
-        sacar_y_asignar(bombo4, 3)
+    if st.button("Repartir Bombo 4"):
+        repartir_bombo(bombo4, 3)
+with col_b5:
+    if st.button("Limpiar Grupos"):
+        limpiar_grupos()
 
 # --- Mostrar tablas de grupos ---
 st.markdown("---")
