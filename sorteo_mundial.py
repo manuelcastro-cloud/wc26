@@ -125,18 +125,15 @@ def repartir_bombo1_con_restricciones():
         if obj:
             st.session_state.grupos[grupo][0] = obj["pais"]
             bombo1.remove(obj)
-            mostrar_grupos_coloreados()
     paises_restantes = bombo1.copy()
     grupos_restantes = [l for l in st.session_state.grupos if l not in fijas.values()]
     random.shuffle(paises_restantes)
     for i, letra in enumerate(grupos_restantes):
         if i < len(paises_restantes):
             st.session_state.grupos[letra][0] = paises_restantes[i]["pais"]
-            mostrar_grupos_coloreados()
     bombo1.clear()
     st.session_state.botones["b1"] = False
     st.session_state.botones["b2"] = True
-    mostrar_grupos_coloreados()
 
 def repartir_bombo_con_restricciones(bombo, posicion, key, habilitar_siguiente=None):
     if not bombo: return
@@ -157,25 +154,21 @@ def repartir_bombo_con_restricciones(bombo, posicion, key, habilitar_siguiente=N
             uefa_count = confs.count("UEFA")
             if pais_obj["confederacion"]=="UEFA" and uefa_count<2 and grupo[posicion] is None:
                 st.session_state.grupos[letra][posicion]=pais_obj["pais"]
-                mostrar_grupos_coloreados()
                 asignado=True
                 break
             elif pais_obj["confederacion"]!="UEFA" and pais_obj["confederacion"] not in confs and grupo[posicion] is None:
                 st.session_state.grupos[letra][posicion]=pais_obj["pais"]
-                mostrar_grupos_coloreados()
                 asignado=True
                 break
         if not asignado:
             for letra in st.session_state.grupos:
                 if st.session_state.grupos[letra][posicion] is None:
                     st.session_state.grupos[letra][posicion]=pais_obj["pais"]
-                    mostrar_grupos_coloreados()
                     break
     bombo.clear()
     st.session_state.botones[key] = False
     if habilitar_siguiente:
         st.session_state.botones[habilitar_siguiente] = True
-    mostrar_grupos_coloreados()
 
 # --- Limpiar ---
 def limpiar_grupos():
@@ -190,21 +183,13 @@ for i, conf in enumerate(conf_colors):
     with cols_conf[i]:
         st.markdown(f"<div style='display:flex; align-items:center'><div style='width:20px; height:20px; background-color:{conf_colors[conf]}; margin-right:4px'></div>{conf}</div>", unsafe_allow_html=True)
 
-# --- Mostrar Bombos con título ---
+# --- Mostrar Bombos ---
 st.subheader("🎟 Bombos")
 col1, col2, col3, col4 = st.columns(4)
-with col1:
-    st.markdown("**Bombo 1**")
-    mostrar_bombo_objetos(bombo1)
-with col2:
-    st.markdown("**Bombo 2**")
-    mostrar_bombo_objetos(bombo2)
-with col3:
-    st.markdown("**Bombo 3**")
-    mostrar_bombo_objetos(bombo3)
-with col4:
-    st.markdown("**Bombo 4**")
-    mostrar_bombo_objetos(bombo4)
+with col1: st.markdown("**Bombo 1**"); mostrar_bombo_objetos(bombo1)
+with col2: st.markdown("**Bombo 2**"); mostrar_bombo_objetos(bombo2)
+with col3: st.markdown("**Bombo 3**"); mostrar_bombo_objetos(bombo3)
+with col4: st.markdown("**Bombo 4**"); mostrar_bombo_objetos(bombo4)
 
 # --- Botones ---
 st.markdown("---")
@@ -224,13 +209,8 @@ with col_b4:
 with col_b5:
     if st.button("Limpiar Grupos"):
         limpiar_grupos()
-        mostrar_bombo_objetos(bombo1)
-        mostrar_bombo_objetos(bombo2)
-        mostrar_bombo_objetos(bombo3)
-        mostrar_bombo_objetos(bombo4)
-        mostrar_grupos_coloreados()
 
-# --- Mostrar Grupos con rayitas ---
+# --- Mostrar Grupos ---
 st.markdown("---")
 st.subheader("📋 Grupos actuales")
 mostrar_grupos_coloreados()
