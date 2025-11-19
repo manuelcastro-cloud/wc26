@@ -65,89 +65,77 @@ bombo4 = [
     {"pais": "UEFA4", "confederacion": "UEFA"}
 ]
 
-# --- Inicializamos 12 grupos con 4 posiciones vacías ---
+# --- Inicializamos sesión ---
 if "grupos" not in st.session_state:
     st.session_state.grupos = {chr(65+i): [None]*4 for i in range(12)}  # A-L
 
-# --- Función para mostrar bombos ---
+# --- Estado de botones ---
+if "botones" not in st.session_state:
+    st.session_state.botones = {"b1": True, "b2": True, "b3": True, "b4": True}
+
+# --- Función mostrar bombos ---
 def mostrar_bombo_objetos(bombo, color):
     for item in bombo:
         st.markdown(f"<div style='background-color:{color}; padding:8px; border-radius:8px; margin-bottom:4px'>{item['pais']}</div>", unsafe_allow_html=True)
 
-# --- Bombo 1 con restricciones fijas ---
+# --- Función repartir Bombo 1 ---
 def repartir_bombo1_con_restricciones():
     global bombo1
-    if not bombo1:
-        st.warning("Bombo 1 vacío")
-        return
-    
+    if not bombo1: return
     fijas = {"México": "A", "Canadá": "B", "USA": "D"}
     for pais, grupo in fijas.items():
-        obj = next((x for x in bombo1 if x["pais"] == pais), None)
+        obj = next((x for x in bombo1 if x["pais"]==pais), None)
         if obj:
             st.session_state.grupos[grupo][0] = obj["pais"]
             bombo1.remove(obj)
-    
-    # Resto al azar
     paises_restantes = bombo1.copy()
-    grupos_restantes = [letra for letra in st.session_state.grupos if letra not in fijas.values()]
+    grupos_restantes = [l for l in st.session_state.grupos if l not in fijas.values()]
     random.shuffle(paises_restantes)
     for i, letra in enumerate(grupos_restantes):
         if i < len(paises_restantes):
             st.session_state.grupos[letra][0] = paises_restantes[i]["pais"]
     bombo1.clear()
-    st.success("Bombo 1 repartido con restricciones")
+    st.session_state.botones["b1"] = False
 
-# --- Función para repartir bombos con restricción confederación ---
-def repartir_bombo_con_restricciones(bombo, posicion):
-    global bombo2, bombo3, bombo4
-    if not bombo:
-        st.warning("Bombo vacío")
-        return
-    
+# --- Función repartir Bombo 2-4 con restricciones ---
+def repartir_bombo_con_restricciones(bombo, posicion, key):
+    if not bombo: return
     paises = bombo.copy()
     random.shuffle(paises)
-    
     for pais_obj in paises:
         asignado = False
         intentos = list(st.session_state.grupos.keys())
         random.shuffle(intentos)
         for letra in intentos:
             grupo = st.session_state.grupos[letra]
-            # Confed de los paises ya en el grupo
             confs = []
-            for idx, p in enumerate(grupo):
+            for idx,p in enumerate(grupo):
                 if p:
                     for b in [bombo1,bombo2,bombo3,bombo4]:
                         match = next((x for x in b if x["pais"]==p), None)
-                        if match:
-                            confs.append(match["confederacion"])
+                        if match: confs.append(match["confederacion"])
             uefa_count = confs.count("UEFA")
-            # Validación
-            if pais_obj["confederacion"] == "UEFA":
-                if uefa_count < 2 and grupo[posicion] is None:
-                    st.session_state.grupos[letra][posicion] = pais_obj["pais"]
-                    asignado = True
-                    break
-            else:
-                if pais_obj["confederacion"] not in confs and grupo[posicion] is None:
-                    st.session_state.grupos[letra][posicion] = pais_obj["pais"]
-                    asignado = True
-                    break
+            if pais_obj["confederacion"]=="UEFA" and uefa_count<2 and grupo[posicion] is None:
+                st.session_state.grupos[letra][posicion]=pais_obj["pais"]
+                asignado=True
+                break
+            elif pais_obj["confederacion"]!="UEFA" and pais_obj["confederacion"] not in confs and grupo[posicion] is None:
+                st.session_state.grupos[letra][posicion]=pais_obj["pais"]
+                asignado=True
+                break
         if not asignado:
-            # Si no se pudo asignar al azar respetando todo, forzamos en cualquier grupo vacío
             for letra in st.session_state.grupos:
                 if st.session_state.grupos[letra][posicion] is None:
-                    st.session_state.grupos[letra][posicion] = pais_obj["pais"]
+                    st.session_state.grupos[letra][posicion]=pais_obj["pais"]
                     break
     bombo.clear()
-    st.success(f"Bombo repartido en posición {posicion+1} con restricciones")
+    st.session_state.botones[key]=False
 
-# --- Botón limpiar ---
+# --- Limpiar grupos y habilitar botones ---
 def limpiar_grupos():
     for letra in st.session_state.grupos:
         st.session_state.grupos[letra] = [None]*4
-    st.success("✅ Grupos limpiados")
+    st.session_state.botones = {"b1": True, "b2": True, "b3": True, "b4": True}
 
 # --- Mostrar bombos ---
 st.subheader("🎟 Bombos")
@@ -157,21 +145,25 @@ with col2: mostrar_bombo_objetos(bombo2, "#ADFF2F")
 with col3: mostrar_bombo_objetos(bombo3, "#1E90FF")
 with col4: mostrar_bombo_objetos(bombo4, "#FF69B4")
 
-# --- Botones para sorteo ---
+# --- Botones ---
 st.markdown("---")
 col_b1, col_b2, col_b3, col_b4, col_b5 = st.columns(5)
 with col_b1: 
-    if st.button("Repartir Bombo 1"): repartir_bombo1_con_restricciones()
+    if st.session_state.botones["b1"]:
+        if st.button("Repartir Bombo 1"): repartir_bombo1_con_restricciones()
 with col_b2: 
-    if st.button("Repartir Bombo 2"): repartir_bombo_con_restricciones(bombo2, 1)
+    if st.session_state.botones["b2"]:
+        if st.button("Repartir Bombo 2"): repartir_bombo_con_restricciones(bombo2, 1,"b2")
 with col_b3: 
-    if st.button("Repartir Bombo 3"): repartir_bombo_con_restricciones(bombo3, 2)
+    if st.session_state.botones["b3"]:
+        if st.button("Repartir Bombo 3"): repartir_bombo_con_restricciones(bombo3, 2,"b3")
 with col_b4: 
-    if st.button("Repartir Bombo 4"): repartir_bombo_con_restricciones(bombo4, 3)
+    if st.session_state.botones["b4"]:
+        if st.button("Repartir Bombo 4"): repartir_bombo_con_restricciones(bombo4, 3,"b4")
 with col_b5: 
     if st.button("Limpiar Grupos"): limpiar_grupos()
 
-# --- Mostrar tablas de grupos ---
+# --- Mostrar grupos ---
 st.markdown("---")
 st.subheader("📋 Grupos actuales")
 cols = st.columns(6)
