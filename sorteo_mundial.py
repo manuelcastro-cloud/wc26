@@ -164,7 +164,7 @@ def repartir_bombo_con_restricciones(bombo, posicion, key, habilitar_siguiente=N
                     st.session_state.grupos[letra][posicion]=pais_obj["pais"]
                     break
     bombonum=posicion+1;          
-    print("ORGANIZO BOMBO "+bombonum)        
+    print("ORGANIZO BOMBO {bombonum}")        
     bombo.clear()
     st.session_state.botones[key] = False
     if habilitar_siguiente:
