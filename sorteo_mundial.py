@@ -2,6 +2,7 @@ import streamlit as st
 import random
 import copy
 import io
+import os
 from PIL import Image, ImageDraw, ImageFont
 import requests 
 
@@ -17,8 +18,8 @@ conf_colors = {
     "CAF": "#FF6347",
     "AFC": "#FF69B4",
     "OFC": "#9370DB",
-    "Variable1": "#D3D3D3", # Gris claro
-    "Variable2": "#A9A9A9"  # Gris oscuro
+    "Variable1": "#D3D3D3", 
+    "Variable2": "#A9A9A9" 
 }
 
 # --- DATOS MAESTROS (CONSTANTES) ---
@@ -99,15 +100,15 @@ iso_map = {
     "Ghana":"gh","Cabo Verde":"cv"
 }
 
-# --- FUNCIONES DE BANDERAS ---
+# --- FUNCIONES AUXILIARES ---
 
-# 1. Para mostrar en HTML (Streamlit UI)
+# 1. Banderas para HTML
 def flag_url_for(country):
     code = iso_map.get(country)
     if not code: return ""
     return f"https://flagcdn.com/w40/{code}.png"
 
-# 2. Para descargar y pegar en la imagen (Pillow)
+# 2. Banderas para Pillow (Cache)
 flag_cache = {}
 def get_flag_image(country_code, size=(20, 15)):
     if country_code not in flag_cache:
@@ -120,10 +121,24 @@ def get_flag_image(country_code, size=(20, 15)):
             flag_img = flag_img.resize(size, Image.LANCZOS)
             flag_cache[country_code] = flag_img
         except Exception as e:
-            # st.warning(f"No se pudo cargar bandera: {e}") # Opcional: comentar para no ensuciar la UI
             flag_cache[country_code] = None
     return flag_cache[country_code]
 
+# 3. FUENTE PERSONALIZADA (Para soportar tildes y Ñ)
+@st.cache_resource
+def get_custom_font():
+    # Descargar Roboto-Regular si no existe localmente
+    font_url = "https://github.com/google/fonts/raw/main/apache/roboto/Roboto-Regular.ttf"
+    font_path = "Roboto-Regular.ttf"
+    
+    if not os.path.exists(font_path):
+        try:
+            r = requests.get(font_url, allow_redirects=True)
+            open(font_path, 'wb').write(r.content)
+        except:
+            return None # Fallback si falla la descarga
+            
+    return font_path
 
 # --- INICIALIZAR SESIÓN ---
 if "grupos" not in st.session_state:
@@ -189,24 +204,27 @@ def generar_imagen_resumen():
     img = Image.new('RGB', (W, H), color=bg_color)
     d = ImageDraw.Draw(img)
     
+    # Cargar Fuente Roboto
+    font_path = get_custom_font()
+    
     try:
-        # Fuentes
-        try:
-            font_title = ImageFont.truetype("arial.ttf", 28) 
-            font_group = ImageFont.truetype("arial.ttf", 20)
-            font_country = ImageFont.truetype("arial.ttf", 16)
-        except IOError:
-            font_title = ImageFont.truetype("Arial.ttf", 28)
-            font_group = ImageFont.truetype("Arial.ttf", 20)
-            font_country = ImageFont.truetype("Arial.ttf", 16)
-    except IOError:
+        if font_path:
+            font_title = ImageFont.truetype(font_path, 28)
+            font_group = ImageFont.truetype(font_path, 20)
+            font_country = ImageFont.truetype(font_path, 16)
+        else:
+            # Fallback si no hay internet para descargar
+            font_title = ImageFont.load_default()
+            font_group = ImageFont.load_default()
+            font_country = ImageFont.load_default()
+    except:
         font_title = ImageFont.load_default()
         font_group = ImageFont.load_default()
         font_country = ImageFont.load_default()
 
     # Título centrado
     text = "RESULTADOS SORTEO MUNDIAL"
-    # .textsize está deprecado en versiones nuevas de Pillow, usamos textbbox si está disponible
+    # Compatibilidad con versiones nuevas y viejas de Pillow
     if hasattr(d, 'textbbox'):
         bbox = d.textbbox((0, 0), text, font=font_title)
         text_w = bbox[2] - bbox[0]
@@ -229,10 +247,12 @@ def generar_imagen_resumen():
         x = margen_x + (columna * ancho_grupo) + 5
         y = margen_y + (fila * alto_grupo) + 20
         
+        # Caja Grupo
         d.rectangle([x, y, x + ancho_grupo - 10, y + alto_grupo - 10], fill="white", outline="#ccc", width=1)
         d.text((x + 10, y + 10), f"GRUPO {letra}", fill="black", font=font_group)
         d.line([x+10, y+35, x + ancho_grupo - 20, y+35], fill="#ddd", width=1)
         
+        # Países
         paises = st.session_state.grupos[letra]
         for idx, pais in enumerate(paises):
             y_pais = y + 50 + (idx * 35)
