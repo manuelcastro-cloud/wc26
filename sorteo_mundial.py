@@ -18,7 +18,7 @@ def guardar_simulacion_en_bd(grupos):
             "datos": grupos
         }
         supabase.table("simulaciones").insert(payload).execute()
-        st.success("Simulación completada ✔️")
+        st.success("Simulation completed! ✔️")
     except Exception as e:
         # st.error(f"Error al completar simulación: {e}") # Descomentar para debug
         pass
@@ -489,7 +489,7 @@ def repartir_bombo4_especial():
     else:
         st.session_state.bombo4.clear()
         st.session_state.botones["b4"] = False
-        st.success(f"¡Sorteo completado!")
+        # st.success(f"¡Sorteo completado!")
 
 # --- CALLBACKS ---
 def repartir_bombo1_click(): repartir_bombo1_con_restricciones()
