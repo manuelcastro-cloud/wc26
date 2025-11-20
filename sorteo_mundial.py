@@ -7,7 +7,6 @@ from PIL import Image, ImageDraw, ImageFont
 from supabase import create_client
 
 # --- SUPABASE ---
-# (Configura tus credenciales reales)
 SUPABASE_URL = "https://gohsdckibmscvvfcxszw.supabase.co"
 SUPABASE_KEY = "sb_publishable_q_7GWwouWZKDrNWsE9MSXQ_qQxlRdNX"
 try:
@@ -155,21 +154,32 @@ iso_map = {
     "Ukraine Path": "eu",
     "Turkey Path": "eu",
     "Denmark Path": "eu",
-    # Paths Intercontinentales (Bandera ONU / Mundo para representar FIFA)
-    "DR Congo Path": "un",
-    "Iraq Path": "un"
+    # --- CAMBIO: Paths Intercontinentales usan código PLANET ---
+    "DR Congo Path": "PLANET",
+    "Iraq Path": "PLANET"
 }
 
-# --- HELPERS ---
+# --- FUNCIONES DE IMÁGENES Y BANDERAS ---
+# URL para el icono del planeta (Usamos Twemoji para consistencia y calidad)
+PLANET_ICON_URL = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f30d.png"
+
 def flag_url_for(country):
     code = iso_map.get(country)
     if not code: return ""
+    # Si es PLANET, devolvemos la URL especial
+    if code == "PLANET":
+        return PLANET_ICON_URL
     return f"https://flagcdn.com/w40/{code}.png"
 
 flag_cache = {}
 def get_flag_image(country_code, size=(20, 15)):
     if country_code not in flag_cache:
-        url = f"https://flagcdn.com/w40/{country_code}.png"
+        # Lógica personalizada para seleccionar la URL
+        if country_code == "PLANET":
+            url = PLANET_ICON_URL
+        else:
+            url = f"https://flagcdn.com/w40/{country_code}.png"
+            
         try:
             response = requests.get(url, timeout=5)
             response.raise_for_status()
@@ -212,7 +222,7 @@ def mostrar_bombo_objetos(bombo):
                 unsafe_allow_html=True
             )
 
-# --- UI: MOSTRAR GRUPOS (RESPONSIVE) ---
+# --- UI: MOSTRAR GRUPOS ---
 def renderizar_tabla_grupo(letra):
     html_table = "<table style='border-collapse:collapse; width:100%; margin-bottom:10px;'>"
     for idx, pais in enumerate(st.session_state.grupos[letra]):
@@ -237,15 +247,11 @@ def renderizar_tabla_grupo(letra):
 
 def mostrar_grupos_coloreados():
     grupos_keys = list(st.session_state.grupos.keys())
-    
-    # FILA 1: A-F
     cols1 = st.columns(6)
     for i in range(6):
         letra = grupos_keys[i]
         with cols1[i]:
             renderizar_tabla_grupo(letra)
-            
-    # FILA 2: G-L
     cols2 = st.columns(6)
     for i in range(6):
         letra = grupos_keys[i+6]
