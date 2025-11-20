@@ -396,7 +396,6 @@ def limpiar_grupos_click():
     st.session_state.botones = {"b1": True, "b2": False, "b3": False, "b4": False}
 
 # --- INTERFAZ ---
-st.subheader("🎨 Confederation Guide")
 cols_conf = st.columns(len(conf_colors))
 for i, conf in enumerate(conf_colors):
     with cols_conf[i]:
@@ -438,8 +437,7 @@ if not st.session_state.bombo4 and not st.session_state.botones["b4"]:
     st.markdown("## 📤 Share Results")
     col_img, col_share = st.columns([1, 2])
     with col_img:
-        img_bytes = generar_imagen_resumen()
-        st.download_button(label="📸 Download Image", data=img_bytes, file_name="wc2026_draw_results.png", mime="image/png", use_container_width=True)
+        st.download_button(label="📸 Download Image", data=generar_imagen_resumen(), file_name="wc2026_draw_results.png", mime="image/png", use_container_width=True)
     with col_share:
         share_text = "Don't miss this 2026 World Cup draw simulator!"
         share_url = "https://wc26final.onrender.com"
