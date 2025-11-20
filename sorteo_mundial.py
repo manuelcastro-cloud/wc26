@@ -19,7 +19,7 @@ def guardar_simulacion_en_bd(grupos):
     try:
         payload = { "datos": grupos }
         supabase.table("simulaciones").insert(payload).execute()
-        st.toast("Simulation saved! ✔️")
+        st.toast("Simulation completed! ✔️")
     except Exception as e:
         pass
 
