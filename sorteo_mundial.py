@@ -1,11 +1,14 @@
 import streamlit as st
 import random
 import copy
+import io
+from PIL import Image, ImageDraw, ImageFont
 
+# --- Configuración de la página ---
 st.set_page_config(page_title="Simulador Sorteo WC2026", layout="wide")
 st.title("🌍 Simulador Sorteo WC2026")
 
-# --- Colores por confederación ---
+# --- COLORES ---
 conf_colors = {
     "CONCACAF": "#FFD700",
     "CONMEBOL": "#ADFF2F",
@@ -13,12 +16,14 @@ conf_colors = {
     "CAF": "#FF6347",
     "AFC": "#FF69B4",
     "OFC": "#9370DB",
-    "Variable1": "#D3D3D3", # Gris para ICP1
-    "Variable2": "#A9A9A9"  # Gris oscuro para ICP2
+    "Variable1": "#D3D3D3", # Gris claro
+    "Variable2": "#A9A9A9"  # Gris oscuro
 }
 
-# --- Definicón de Bombos ---
-bombo1 = [
+# --- DATOS MAESTROS (CONSTANTES) ---
+# Estos datos no se tocan, sirven para reiniciar la simulación.
+
+DATA_BOMBO_1 = [
     {"pais": "México", "confederacion": "CONCACAF"},
     {"pais": "Canadá", "confederacion": "CONCACAF"},
     {"pais": "USA", "confederacion": "CONCACAF"},
@@ -33,7 +38,7 @@ bombo1 = [
     {"pais": "Alemania", "confederacion": "UEFA"}
 ]
 
-bombo2 = [
+DATA_BOMBO_2 = [
     {"pais": "Croacia", "confederacion": "UEFA"},
     {"pais": "Marruecos", "confederacion": "CAF"},
     {"pais": "Colombia", "confederacion": "CONMEBOL"},
@@ -48,7 +53,7 @@ bombo2 = [
     {"pais": "Australia", "confederacion": "AFC"}
 ]
 
-bombo3 = [
+DATA_BOMBO_3 = [
     {"pais": "Noruega", "confederacion": "UEFA"},
     {"pais": "Panamá", "confederacion": "CONCACAF"},
     {"pais": "Egipto", "confederacion": "CAF"},
@@ -63,28 +68,28 @@ bombo3 = [
     {"pais": "Arabia Saudí", "confederacion": "AFC"}
 ]
 
-# AQUI CAMBIAMOS LAS CONFEDERACIONES DE LOS ICP
-bombo4 = [
+DATA_BOMBO_4 = [
     {"pais": "Jordania", "confederacion": "AFC"},
     {"pais": "Curazao", "confederacion": "CONCACAF"},
     {"pais": "Nueva Zelanda", "confederacion": "OFC"},
     {"pais": "Haití", "confederacion": "CONCACAF"},
     {"pais": "Ghana", "confederacion": "CAF"},
     {"pais": "Cabo Verde", "confederacion": "CAF"},
-    {"pais": "ICP1", "confederacion": "Variable1"}, # <--- CAMBIO
-    {"pais": "ICP2", "confederacion": "Variable2"}, # <--- CAMBIO
+    {"pais": "ICP1", "confederacion": "Variable1"},
+    {"pais": "ICP2", "confederacion": "Variable2"},
     {"pais": "UEFA1", "confederacion": "UEFA"},
     {"pais": "UEFA2", "confederacion": "UEFA"},
     {"pais": "UEFA3", "confederacion": "UEFA"},
     {"pais": "UEFA4", "confederacion": "UEFA"}
 ]
 
-# --- Mapa país -> confederación ---
+# --- MAPAS DE REFERENCIA ---
+# Mapa país -> confederación
 country_conf = {}
-for b in (bombo1 + bombo2 + bombo3 + bombo4):
+for b in (DATA_BOMBO_1 + DATA_BOMBO_2 + DATA_BOMBO_3 + DATA_BOMBO_4):
     country_conf[b["pais"]] = b["confederacion"]
 
-# --- Mapa ISO alpha-2 ---
+# Mapa ISO alpha-2 para banderas
 iso_map = {
     "México":"mx","Canadá":"ca","USA":"us","España":"es","Argentina":"ar",
     "Francia":"fr","Inglaterra":"gb","Portugal":"pt","Holanda":"nl","Brasil":"br",
@@ -102,22 +107,30 @@ def flag_url_for(country):
     if not code: return ""
     return f"https://flagcdn.com/w40/{code}.png"
 
-# --- Inicializar Sesión ---
+# --- INICIALIZAR SESIÓN (ESTADO) ---
 if "grupos" not in st.session_state:
     st.session_state.grupos = {chr(65+i): [None]*4 for i in range(12)}
 
 if "botones" not in st.session_state:
     st.session_state.botones = {"b1": True, "b2": False, "b3": False, "b4": False}
 
-# --- Funciones Visuales ---
+# Cargamos los bombos DE TRABAJO en sesión (copias de los datos maestros)
+if "bombo1" not in st.session_state:
+    st.session_state.bombo1 = copy.deepcopy(DATA_BOMBO_1)
+if "bombo2" not in st.session_state:
+    st.session_state.bombo2 = copy.deepcopy(DATA_BOMBO_2)
+if "bombo3" not in st.session_state:
+    st.session_state.bombo3 = copy.deepcopy(DATA_BOMBO_3)
+if "bombo4" not in st.session_state:
+    st.session_state.bombo4 = copy.deepcopy(DATA_BOMBO_4)
+
+# --- FUNCIONES DE UI ---
 def mostrar_bombo_objetos(bombo):
     for item in bombo:
         color = conf_colors.get(item["confederacion"], "#FFFFFF")
         bandera_url = flag_url_for(item["pais"])
-        if bandera_url:
-            img_html = f"<img src='{bandera_url}' width='24' style='margin-left:8px; vertical-align:middle'/>"
-        else:
-            img_html = "&#10067;"
+        img_html = f"<img src='{bandera_url}' width='24' style='margin-left:8px; vertical-align:middle'/>" if bandera_url else "&#10067;"
+        
         st.markdown(
             f"<div style='padding:8px; border-radius:8px; margin-bottom:4px; display:flex; align-items:center; justify-content:space-between'>"
             f"<div style='display:flex; align-items:center'><span style='display:inline-block; width:8px; height:24px; background-color:{color}; margin-right:8px; vertical-align:middle'></span>"
@@ -152,31 +165,98 @@ def mostrar_grupos_coloreados():
             html_table += "</table>"
             st.markdown(f"<b>Grupo {letra}</b><br>{html_table}", unsafe_allow_html=True)
 
-# --- LÓGICA BOMBO 1 ---
+# --- GENERACIÓN DE IMAGEN (PILLOW) ---
+def generar_imagen_resumen():
+    # Lienzo
+    W, H = 1200, 800
+    bg_color = (240, 242, 246) 
+    img = Image.new('RGB', (W, H), color=bg_color)
+    d = ImageDraw.Draw(img)
+    
+    try:
+        font_title = ImageFont.load_default() 
+    except:
+        pass
+
+    # Título
+    d.text((W/2 - 80, 20), "RESULTADOS SORTEO MUNDIAL", fill=(0,0,0))
+
+    # Grilla
+    margen_x = 20
+    margen_y = 60
+    ancho_grupo = (W - (margen_x * 2)) / 6
+    alto_grupo = (H - (margen_y * 2)) / 2.2
+    
+    grupos_keys = list(st.session_state.grupos.keys())
+    
+    for i, letra in enumerate(grupos_keys):
+        fila = 0 if i < 6 else 1
+        columna = i % 6
+        x = margen_x + (columna * ancho_grupo) + 5
+        y = margen_y + (fila * alto_grupo) + 20
+        
+        # Caja Grupo
+        d.rectangle([x, y, x + ancho_grupo - 10, y + alto_grupo - 10], fill="white", outline="#ccc", width=1)
+        d.text((x + 10, y + 10), f"GRUPO {letra}", fill="black")
+        d.line([x+10, y+25, x + ancho_grupo - 20, y+25], fill="#ddd", width=1)
+        
+        # Países
+        paises = st.session_state.grupos[letra]
+        for idx, pais in enumerate(paises):
+            y_pais = y + 40 + (idx * 30)
+            if pais:
+                conf = country_conf.get(pais, "Variable")
+                hex_color = conf_colors.get(conf, "#000000")
+                
+                try:
+                    d.rectangle([x + 10, y_pais, x + 15, y_pais + 20], fill=hex_color)
+                except:
+                    d.rectangle([x + 10, y_pais, x + 15, y_pais + 20], fill="gray")
+                
+                d.text((x + 25, y_pais + 2), pais, fill="black")
+            else:
+                d.text((x + 25, y_pais + 2), "---", fill="gray")
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+# --- LÓGICA DE SORTEO ---
+
+# 1. BOMBO 1 (Cabezas de serie)
 def repartir_bombo1_con_restricciones():
-    global bombo1
-    if not bombo1: return
+    bombo = st.session_state.bombo1
+    if not bombo: return
+    
     fijas = {"México": "A", "Canadá": "B", "USA": "D"}
+    
+    # Asignar anfitriones
     for pais, grupo in fijas.items():
-        obj = next((x for x in bombo1 if x["pais"] == pais), None)
+        obj = next((x for x in bombo if x["pais"] == pais), None)
         if obj:
             st.session_state.grupos[grupo][0] = obj["pais"]
-            bombo1.remove(obj)
-    paises_restantes = bombo1.copy()
+            bombo.remove(obj)
+            
+    # Repartir resto
+    paises_restantes = bombo.copy()
     grupos_restantes = [l for l in st.session_state.grupos if l not in fijas.values()]
     random.shuffle(paises_restantes)
+    
     for i, letra in enumerate(grupos_restantes):
         if i < len(paises_restantes):
             st.session_state.grupos[letra][0] = paises_restantes[i]["pais"]
-    bombo1.clear()
+            
+    st.session_state.bombo1.clear()
     st.session_state.botones["b1"] = False
     st.session_state.botones["b2"] = True
 
-# --- LÓGICA BOMBOS 2 y 3 (Estándar) ---
-def repartir_bombo_generico(bombo, posicion, key, habilitar_siguiente=None):
-    if not bombo: return
+# 2. BOMBOS GENERÍCOS (2 y 3) - Backtracking
+def repartir_bombo_generico(bombo_list, posicion, key_actual, key_siguiente):
+    if not bombo_list: return
+    
     estado_inicial = copy.deepcopy(st.session_state.grupos)
-    paises_a_repartir = bombo.copy()
+    paises_a_repartir = bombo_list.copy()
     
     while True:
         st.session_state.grupos = copy.deepcopy(estado_inicial)
@@ -213,22 +293,23 @@ def repartir_bombo_generico(bombo, posicion, key, habilitar_siguiente=None):
         
         if exito_bombo: break
 
-    bombo.clear()
-    st.session_state.botones[key] = False
-    if habilitar_siguiente: st.session_state.botones[habilitar_siguiente] = True
+    bombo_list.clear()
+    st.session_state.botones[key_actual] = False
+    if key_siguiente: 
+        st.session_state.botones[key_siguiente] = True
 
-# --- LÓGICA ESPECIAL BOMBO 4 (Con ICP1 e ICP2) ---
+# 3. BOMBO 4 (Especial ICP)
 def repartir_bombo4_especial():
-    global bombo4
-    if not bombo4: return
+    bombo_list = st.session_state.bombo4
+    if not bombo_list: return
     
-    # Definición de restricciones de los ICP
+    # Restricciones compuestas
     restricciones_icp1 = ["CAF", "CONCACAF", "OFC"]
     restricciones_icp2 = ["AFC", "CONCACAF", "CONMEBOL"]
     
     estado_inicial = copy.deepcopy(st.session_state.grupos)
-    paises_a_repartir = bombo4.copy()
-    posicion = 3 # Bombo 4 va en índice 3
+    paises_a_repartir = bombo_list.copy()
+    posicion = 3 
     
     while True:
         st.session_state.grupos = copy.deepcopy(estado_inicial)
@@ -244,34 +325,25 @@ def repartir_bombo4_especial():
                 grupo = st.session_state.grupos[letra]
                 if grupo[posicion] is not None: continue
                 
-                # Obtenemos confederaciones YA presentes en el grupo
                 confs_grupo = [country_conf.get(p) for p in grupo if p]
                 uefa_count = confs_grupo.count("UEFA")
                 mi_conf = pais_obj["confederacion"]
                 
                 es_valido = False
                 
-                # CASO 1: ICP1 (Variable1)
-                if mi_conf == "Variable1":
-                    # Verifica que NINGUNA de las restricciones esté presente en el grupo
-                    # any(...) devuelve True si encuentra alguna coincidencia, por eso usamos 'not any'
+                if mi_conf == "Variable1": # ICP1
                     if not any(c in confs_grupo for c in restricciones_icp1):
                         es_valido = True
                         
-                # CASO 2: ICP2 (Variable2)
-                elif mi_conf == "Variable2":
+                elif mi_conf == "Variable2": # ICP2
                     if not any(c in confs_grupo for c in restricciones_icp2):
                         es_valido = True
                         
-                # CASO 3: UEFA (Europeos del bombo 4)
                 elif mi_conf == "UEFA":
-                    if uefa_count < 2:
-                        es_valido = True
+                    if uefa_count < 2: es_valido = True
                         
-                # CASO 4: Resto de países normales (AFC, CAF, etc.)
-                else:
-                    if mi_conf not in confs_grupo:
-                        es_valido = True
+                else: # Resto normal
+                    if mi_conf not in confs_grupo: es_valido = True
                 
                 if es_valido:
                     st.session_state.grupos[letra][posicion] = pais_obj["pais"]
@@ -284,30 +356,39 @@ def repartir_bombo4_especial():
         
         if exito_bombo: break
 
-    bombo4.clear()
+    bombo_list.clear()
     st.session_state.botones["b4"] = False
 
 
-# --- Limpiar ---
-def limpiar_grupos_click():
-    for letra in st.session_state.grupos:
-        st.session_state.grupos[letra] = [None] * 4
-    st.session_state.botones = {"b1": True, "b2": False, "b3": False, "b4": False}
-
-# --- Botones Callbacks ---
+# --- CALLBACKS (BOTONES) ---
 def repartir_bombo1_click():
     repartir_bombo1_con_restricciones()
 
 def repartir_bombo2_click():
-    repartir_bombo_generico(bombo2, 1, "b2", "b3")
+    repartir_bombo_generico(st.session_state.bombo2, 1, "b2", "b3")
 
 def repartir_bombo3_click():
-    repartir_bombo_generico(bombo3, 2, "b3", "b4")
+    repartir_bombo_generico(st.session_state.bombo3, 2, "b3", "b4")
 
 def repartir_bombo4_click():
-    repartir_bombo4_especial() # Llama a la función especial
+    repartir_bombo4_especial()
 
-# --- UI ---
+def limpiar_grupos_click():
+    # Reiniciar Grupos
+    for letra in st.session_state.grupos:
+        st.session_state.grupos[letra] = [None] * 4
+    # Restaurar Bombos desde MAESTROS
+    st.session_state.bombo1 = copy.deepcopy(DATA_BOMBO_1)
+    st.session_state.bombo2 = copy.deepcopy(DATA_BOMBO_2)
+    st.session_state.bombo3 = copy.deepcopy(DATA_BOMBO_3)
+    st.session_state.bombo4 = copy.deepcopy(DATA_BOMBO_4)
+    # Restaurar botones
+    st.session_state.botones = {"b1": True, "b2": False, "b3": False, "b4": False}
+
+
+# --- INTERFAZ PRINCIPAL ---
+
+st.subheader("🎨 Guía de confederaciones")
 cols_conf = st.columns(len(conf_colors))
 for i, conf in enumerate(conf_colors):
     with cols_conf[i]:
@@ -322,16 +403,16 @@ st.subheader("🎟 Bombos")
 col1, col2, col3, col4 = st.columns(4)
 with col1:
     st.markdown("**Bombo 1**")
-    mostrar_bombo_objetos(bombo1)
+    mostrar_bombo_objetos(st.session_state.bombo1)
 with col2:
     st.markdown("**Bombo 2**")
-    mostrar_bombo_objetos(bombo2)
+    mostrar_bombo_objetos(st.session_state.bombo2)
 with col3:
     st.markdown("**Bombo 3**")
-    mostrar_bombo_objetos(bombo3)
+    mostrar_bombo_objetos(st.session_state.bombo3)
 with col4:
     st.markdown("**Bombo 4**")
-    mostrar_bombo_objetos(bombo4)
+    mostrar_bombo_objetos(st.session_state.bombo4)
 
 st.markdown("---")
 col_b1, col_b2, col_b3, col_b4, col_b5 = st.columns(5)
@@ -344,8 +425,46 @@ with col_b3:
 with col_b4:
     st.button("Repartir Bombo 4", disabled=not st.session_state.botones["b4"], on_click=repartir_bombo4_click)
 with col_b5:
-    st.button("Limpiar Grupos", on_click=limpiar_grupos_click)
+    st.button("🔄 Limpiar / Reiniciar", on_click=limpiar_grupos_click)
 
 st.markdown("---")
 st.subheader("📋 Grupos")
 mostrar_grupos_coloreados()
+
+# --- SECCIÓN DE DESCARGA Y COMPARTIR ---
+# Se muestra solo si el bombo 4 ya fue sorteado
+if not st.session_state.bombo4 and not st.session_state.botones["b4"]:
+    st.markdown("---")
+    st.markdown("## 📤 Compartir Resultados")
+    
+    col_img, col_share = st.columns([1, 2])
+    
+    with col_img:
+        img_bytes = generar_imagen_resumen()
+        st.download_button(
+            label="📸 Descargar Imagen del Sorteo",
+            data=img_bytes,
+            file_name="sorteo_mundial_2026.png",
+            mime="image/png",
+            use_container_width=True
+        )
+        
+    with col_share:
+        st.info("1. Descarga la imagen a la izquierda. \n2. Selecciona tu red social abajo y adjunta la imagen descargada.")
+        
+        share_text = "¡He simulado el sorteo del Mundial 2026! Mira mis grupos:"
+        share_url = "https://tu-app-streamlit.com"
+        wa_url = f"https://api.whatsapp.com/send?text={share_text} {share_url}"
+        tw_url = f"https://twitter.com/intent/tweet?text={share_text}&url={share_url}"
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown(f"""<a href="{wa_url}" target="_blank">
+                <button style="background-color:#25D366; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer;">
+                    Compartir en WhatsApp
+                </button></a>""", unsafe_allow_html=True)
+        with c2:
+            st.markdown(f"""<a href="{tw_url}" target="_blank">
+                <button style="background-color:#1DA1F2; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer;">
+                    Compartir en X
+                </button></a>""", unsafe_allow_html=True)
