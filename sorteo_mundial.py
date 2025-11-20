@@ -535,7 +535,7 @@ if not st.session_state.bombo4 and not st.session_state.botones["b4"]:
         st.download_button(label="📸 Download Image", data=img_bytes, file_name="wc2026_draw_results.png", mime="image/png", use_container_width=True)
     with col_share:
         share_text = "Don't miss this 2026 World Cup draw simulator!"
-        share_url = "https://wc26final.onrender.com"
+        share_url = "https://wc2026.onrender.com"
         wa_url = f"https://api.whatsapp.com/send?text={share_text} {share_url}"
         tw_url = f"https://twitter.com/intent/tweet?text={share_text}&url={share_url}"
         fb_url = f"https://www.facebook.com/sharer/sharer.php?u={share_url}"
