@@ -2,8 +2,8 @@ import streamlit as st
 import random
 import copy
 
-st.set_page_config(page_title="Sorteo Mundial Interactivo", layout="wide")
-st.title("🌍 Simulador Interactivo de Sorteo Mundial - Lógica ICP Avanzada")
+st.set_page_config(page_title="Simulador Sorteo Mundial", layout="wide")
+st.title("🌍 Simulador Sorteo Mundial")
 
 # --- Colores por confederación ---
 conf_colors = {
@@ -308,7 +308,6 @@ def repartir_bombo4_click():
     repartir_bombo4_especial() # Llama a la función especial
 
 # --- UI ---
-st.subheader("🎨 Guía de confederaciones")
 cols_conf = st.columns(len(conf_colors))
 for i, conf in enumerate(conf_colors):
     with cols_conf[i]:
@@ -348,5 +347,5 @@ with col_b5:
     st.button("Limpiar Grupos", on_click=limpiar_grupos_click)
 
 st.markdown("---")
-st.subheader("📋 Grupos actuales")
+st.subheader("📋 Grupos")
 mostrar_grupos_coloreados()
