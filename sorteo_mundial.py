@@ -1,9 +1,9 @@
 import streamlit as st
 import random
-import copy  # <--- IMPORTANTE: Necesario para copiar el estado de los grupos
+import copy
 
 st.set_page_config(page_title="Sorteo Mundial Interactivo", layout="wide")
-st.title("🌍 Simulador Interactivo de Sorteo Mundial con Bombos y Restricciones")
+st.title("🌍 Simulador Interactivo de Sorteo Mundial - Lógica ICP Avanzada")
 
 # --- Colores por confederación ---
 conf_colors = {
@@ -13,11 +13,11 @@ conf_colors = {
     "CAF": "#FF6347",
     "AFC": "#FF69B4",
     "OFC": "#9370DB",
-    "Variable": "#D3D3D3"
+    "Variable1": "#D3D3D3", # Gris para ICP1
+    "Variable2": "#A9A9A9"  # Gris oscuro para ICP2
 }
 
-# --- Bombos ---
-# (Mantén tus listas de bombos bombo1, bombo2, bombo3, bombo4 exactamente como las tenías)
+# --- Definicón de Bombos ---
 bombo1 = [
     {"pais": "México", "confederacion": "CONCACAF"},
     {"pais": "Canadá", "confederacion": "CONCACAF"},
@@ -63,6 +63,7 @@ bombo3 = [
     {"pais": "Arabia Saudí", "confederacion": "AFC"}
 ]
 
+# AQUI CAMBIAMOS LAS CONFEDERACIONES DE LOS ICP
 bombo4 = [
     {"pais": "Jordania", "confederacion": "AFC"},
     {"pais": "Curazao", "confederacion": "CONCACAF"},
@@ -70,16 +71,15 @@ bombo4 = [
     {"pais": "Haití", "confederacion": "CONCACAF"},
     {"pais": "Ghana", "confederacion": "CAF"},
     {"pais": "Cabo Verde", "confederacion": "CAF"},
-    {"pais": "ICP1", "confederacion": "Variable"},
-    {"pais": "ICP2", "confederacion": "Variable"},
+    {"pais": "ICP1", "confederacion": "Variable1"}, # <--- CAMBIO
+    {"pais": "ICP2", "confederacion": "Variable2"}, # <--- CAMBIO
     {"pais": "UEFA1", "confederacion": "UEFA"},
     {"pais": "UEFA2", "confederacion": "UEFA"},
     {"pais": "UEFA3", "confederacion": "UEFA"},
     {"pais": "UEFA4", "confederacion": "UEFA"}
 ]
 
-
-# --- Mapa inmutable país -> confederación ---
+# --- Mapa país -> confederación ---
 country_conf = {}
 for b in (bombo1 + bombo2 + bombo3 + bombo4):
     country_conf[b["pais"]] = b["confederacion"]
@@ -99,18 +99,17 @@ iso_map = {
 
 def flag_url_for(country):
     code = iso_map.get(country)
-    if not code:
-        return ""
+    if not code: return ""
     return f"https://flagcdn.com/w40/{code}.png"
 
-# --- Inicializamos sesión ---
+# --- Inicializar Sesión ---
 if "grupos" not in st.session_state:
-    st.session_state.grupos = {chr(65+i): [None]*4 for i in range(12)} # A-L
+    st.session_state.grupos = {chr(65+i): [None]*4 for i in range(12)}
 
 if "botones" not in st.session_state:
     st.session_state.botones = {"b1": True, "b2": False, "b3": False, "b4": False}
 
-# --- Función mostrar bombos (IGUAL) ---
+# --- Funciones Visuales ---
 def mostrar_bombo_objetos(bombo):
     for item in bombo:
         color = conf_colors.get(item["confederacion"], "#FFFFFF")
@@ -128,7 +127,6 @@ def mostrar_bombo_objetos(bombo):
             unsafe_allow_html=True
         )
 
-# --- Función mostrar grupos (IGUAL) ---
 def mostrar_grupos_coloreados():
     cols = st.columns(6)
     for i, letra in enumerate(st.session_state.grupos):
@@ -139,10 +137,8 @@ def mostrar_grupos_coloreados():
                     conf = country_conf.get(pais)
                     color = conf_colors.get(conf, "#000000")
                     bandera_url = flag_url_for(pais)
-                    if bandera_url:
-                        bandera_html = f"<img src='{bandera_url}' width='24' style='margin-left:8px; vertical-align:middle'/>"
-                    else:
-                        bandera_html = "&#10067;"
+                    bandera_html = f"<img src='{bandera_url}' width='24' style='margin-left:8px; vertical-align:middle'/>" if bandera_url else "&#10067;"
+                    
                     html_table += (
                         f"<tr>"
                         f"<td style='padding:6px; border-left:8px solid {color}; display:flex; justify-content:space-between; align-items:center'>"
@@ -156,128 +152,162 @@ def mostrar_grupos_coloreados():
             html_table += "</table>"
             st.markdown(f"<b>Grupo {letra}</b><br>{html_table}", unsafe_allow_html=True)
 
-# --- LÓGICA DE REPARTO DEL BOMBO 1 (IGUAL) ---
+# --- LÓGICA BOMBO 1 ---
 def repartir_bombo1_con_restricciones():
     global bombo1
-    if not bombo1:
-        return
+    if not bombo1: return
     fijas = {"México": "A", "Canadá": "B", "USA": "D"}
-    # Asignar cabezas de serie fijas
     for pais, grupo in fijas.items():
         obj = next((x for x in bombo1 if x["pais"] == pais), None)
         if obj:
             st.session_state.grupos[grupo][0] = obj["pais"]
             bombo1.remove(obj)
-    
-    # Repartir el resto aleatoriamente
     paises_restantes = bombo1.copy()
     grupos_restantes = [l for l in st.session_state.grupos if l not in fijas.values()]
     random.shuffle(paises_restantes)
-    
     for i, letra in enumerate(grupos_restantes):
         if i < len(paises_restantes):
             st.session_state.grupos[letra][0] = paises_restantes[i]["pais"]
-            
     bombo1.clear()
     st.session_state.botones["b1"] = False
     st.session_state.botones["b2"] = True
 
-# --- LÓGICA CORREGIDA PARA BOMBOS 2, 3 Y 4 ---
-def repartir_bombo_con_restricciones(bombo, posicion, key, habilitar_siguiente=None):
-    if not bombo:
-        return
-
-    # Guardamos una copia "segura" del estado de los grupos ANTES de tocar nada en este bombo
-    estado_inicial_grupos = copy.deepcopy(st.session_state.grupos)
+# --- LÓGICA BOMBOS 2 y 3 (Estándar) ---
+def repartir_bombo_generico(bombo, posicion, key, habilitar_siguiente=None):
+    if not bombo: return
+    estado_inicial = copy.deepcopy(st.session_state.grupos)
     paises_a_repartir = bombo.copy()
-
-    # Bucle infinito hasta encontrar una solución válida
+    
     while True:
-        # 1. Restauramos el estado inicial (limpiamos intentos fallidos previos)
-        st.session_state.grupos = copy.deepcopy(estado_inicial_grupos)
-        
-        # 2. Mezclamos los países para intentar un orden nuevo
+        st.session_state.grupos = copy.deepcopy(estado_inicial)
         random.shuffle(paises_a_repartir)
+        exito_bombo = True
         
-        exito_bombo = True  # Asumimos que todo saldrá bien
-
         for pais_obj in paises_a_repartir:
             asignado = False
-            # Mezclamos los grupos para intentar asignación aleatoria
-            grupos_letras = list(st.session_state.grupos.keys())
-            random.shuffle(grupos_letras)
-
-            for letra in grupos_letras:
+            letras = list(st.session_state.grupos.keys())
+            random.shuffle(letras)
+            
+            for letra in letras:
                 grupo = st.session_state.grupos[letra]
+                if grupo[posicion] is not None: continue
                 
-                # Si la posición ya tiene algo (error lógico), saltamos
-                if grupo[posicion] is not None:
-                    continue
-
-                # REVISAR CONFEDERACIONES EN EL GRUPO
-                confs_en_grupo = []
-                for p in grupo:
-                    if p:
-                        confs_en_grupo.append(country_conf.get(p))
-                
-                uefa_count = confs_en_grupo.count("UEFA")
+                confs_grupo = [country_conf.get(p) for p in grupo if p]
+                uefa_count = confs_grupo.count("UEFA")
                 mi_conf = pais_obj["confederacion"]
-
-                # --- APLICACIÓN ESTRICTA DE REGLAS ---
+                
                 es_valido = False
-                
                 if mi_conf == "UEFA":
-                    # UEFA permite hasta 2
-                    if uefa_count < 2:
-                        es_valido = True
+                    if uefa_count < 2: es_valido = True
                 else:
-                    # Resto solo permite 1
-                    if mi_conf not in confs_en_grupo:
-                        es_valido = True
+                    if mi_conf not in confs_grupo: es_valido = True
                 
-                # Si cumple reglas, asignamos
                 if es_valido:
                     st.session_state.grupos[letra][posicion] = pais_obj["pais"]
                     asignado = True
-                    break # Pasamos al siguiente país
+                    break
             
-            # Si salimos del bucle de grupos y NO se asignó el país:
             if not asignado:
                 exito_bombo = False
-                break # Rompemos el bucle de países y volvemos a empezar el while principal
+                break
+        
+        if exito_bombo: break
 
-        # Si logramos asignar todos los países del bombo sin errores, terminamos
-        if exito_bombo:
-            break 
-    
-    # Finalización
     bombo.clear()
     st.session_state.botones[key] = False
-    if habilitar_siguiente:
-        st.session_state.botones[habilitar_siguiente] = True
+    if habilitar_siguiente: st.session_state.botones[habilitar_siguiente] = True
+
+# --- LÓGICA ESPECIAL BOMBO 4 (Con ICP1 e ICP2) ---
+def repartir_bombo4_especial():
+    global bombo4
+    if not bombo4: return
+    
+    # Definición de restricciones de los ICP
+    restricciones_icp1 = ["CAF", "CONCACAF", "OFC"]
+    restricciones_icp2 = ["AFC", "CONCACAF", "CONMEBOL"]
+    
+    estado_inicial = copy.deepcopy(st.session_state.grupos)
+    paises_a_repartir = bombo4.copy()
+    posicion = 3 # Bombo 4 va en índice 3
+    
+    while True:
+        st.session_state.grupos = copy.deepcopy(estado_inicial)
+        random.shuffle(paises_a_repartir)
+        exito_bombo = True
+        
+        for pais_obj in paises_a_repartir:
+            asignado = False
+            letras = list(st.session_state.grupos.keys())
+            random.shuffle(letras)
+            
+            for letra in letras:
+                grupo = st.session_state.grupos[letra]
+                if grupo[posicion] is not None: continue
+                
+                # Obtenemos confederaciones YA presentes en el grupo
+                confs_grupo = [country_conf.get(p) for p in grupo if p]
+                uefa_count = confs_grupo.count("UEFA")
+                mi_conf = pais_obj["confederacion"]
+                
+                es_valido = False
+                
+                # CASO 1: ICP1 (Variable1)
+                if mi_conf == "Variable1":
+                    # Verifica que NINGUNA de las restricciones esté presente en el grupo
+                    # any(...) devuelve True si encuentra alguna coincidencia, por eso usamos 'not any'
+                    if not any(c in confs_grupo for c in restricciones_icp1):
+                        es_valido = True
+                        
+                # CASO 2: ICP2 (Variable2)
+                elif mi_conf == "Variable2":
+                    if not any(c in confs_grupo for c in restricciones_icp2):
+                        es_valido = True
+                        
+                # CASO 3: UEFA (Europeos del bombo 4)
+                elif mi_conf == "UEFA":
+                    if uefa_count < 2:
+                        es_valido = True
+                        
+                # CASO 4: Resto de países normales (AFC, CAF, etc.)
+                else:
+                    if mi_conf not in confs_grupo:
+                        es_valido = True
+                
+                if es_valido:
+                    st.session_state.grupos[letra][posicion] = pais_obj["pais"]
+                    asignado = True
+                    break
+            
+            if not asignado:
+                exito_bombo = False
+                break
+        
+        if exito_bombo: break
+
+    bombo4.clear()
+    st.session_state.botones["b4"] = False
+
 
 # --- Limpiar ---
 def limpiar_grupos_click():
     for letra in st.session_state.grupos:
         st.session_state.grupos[letra] = [None] * 4
     st.session_state.botones = {"b1": True, "b2": False, "b3": False, "b4": False}
-    # Nota: Esto no restaura los bombos visualmente si ya se borraron de la lista global, 
-    # en una app real deberías usar session_state para los bombos también.
 
-# --- Botones callbacks ---
+# --- Botones Callbacks ---
 def repartir_bombo1_click():
     repartir_bombo1_con_restricciones()
 
 def repartir_bombo2_click():
-    repartir_bombo_con_restricciones(bombo2, 1, "b2", "b3")
+    repartir_bombo_generico(bombo2, 1, "b2", "b3")
 
 def repartir_bombo3_click():
-    repartir_bombo_con_restricciones(bombo3, 2, "b3", "b4")
+    repartir_bombo_generico(bombo3, 2, "b3", "b4")
 
 def repartir_bombo4_click():
-    repartir_bombo_con_restricciones(bombo4, 3, "b4")
+    repartir_bombo4_especial() # Llama a la función especial
 
-# --- UI Layout ---
+# --- UI ---
 st.subheader("🎨 Guía de confederaciones")
 cols_conf = st.columns(len(conf_colors))
 for i, conf in enumerate(conf_colors):
