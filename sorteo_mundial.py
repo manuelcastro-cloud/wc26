@@ -4,6 +4,23 @@ import copy
 import io
 import requests 
 from PIL import Image, ImageDraw, ImageFont
+from supabase import create_client
+
+# --- SUPABASE ---
+SUPABASE_URL = "https://xxxxx.supabase.co"
+SUPABASE_KEY = "tu_api_key"
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+def guardar_simulacion_en_bd(grupos):
+    """Guarda una simulación completa en Supabase como JSON."""
+    try:
+        payload = {
+            "datos": grupos
+        }
+        supabase.table("simulaciones").insert(payload).execute()
+        st.success("Simulación guardada en la base de datos ✔️")
+    except Exception as e:
+        st.error(f"Error al guardar simulación: {e}")
 
 # --- Configuración de la página ---
 st.set_page_config(page_title="WC2026 Draw Simulator", layout="wide")
@@ -413,6 +430,10 @@ st.subheader("📋 Groups")
 mostrar_grupos_coloreados()
 
 if not st.session_state.bombo4 and not st.session_state.botones["b4"]:
+
+    # --- GUARDAR SIMULACIÓN AUTOMÁTICAMENTE ---
+    guardar_simulacion_en_bd(st.session_state.grupos)
+
     st.markdown("---")
     st.markdown("## 📤 Share Results")
     col_img, col_share = st.columns([1, 2])
