@@ -2,13 +2,12 @@ import streamlit as st
 import random
 import copy
 import io
-import os
-from PIL import Image, ImageDraw, ImageFont
 import requests 
+from PIL import Image, ImageDraw, ImageFont
 
 # --- Configuración de la página ---
-st.set_page_config(page_title="Simulador Sorteo WC2026", layout="wide")
-st.title("🌍 Simulador Sorteo WC2026")
+st.set_page_config(page_title="WC2026 Draw Simulator", layout="wide")
+st.title("🌍 WC2026 Draw Simulator")
 
 # --- COLORES ---
 conf_colors = {
@@ -22,59 +21,59 @@ conf_colors = {
     "Variable2": "#A9A9A9" 
 }
 
-# --- DATOS MAESTROS (CONSTANTES) ---
+# --- DATOS MAESTROS (CONSTANTES) - EN INGLÉS ---
 DATA_BOMBO_1 = [
-    {"pais": "México", "confederacion": "CONCACAF"},
-    {"pais": "Canadá", "confederacion": "CONCACAF"},
+    {"pais": "Mexico", "confederacion": "CONCACAF"},
+    {"pais": "Canada", "confederacion": "CONCACAF"},
     {"pais": "USA", "confederacion": "CONCACAF"},
-    {"pais": "España", "confederacion": "UEFA"},
+    {"pais": "Spain", "confederacion": "UEFA"},
     {"pais": "Argentina", "confederacion": "CONMEBOL"},
-    {"pais": "Francia", "confederacion": "UEFA"},
-    {"pais": "Inglaterra", "confederacion": "UEFA"},
+    {"pais": "France", "confederacion": "UEFA"},
+    {"pais": "England", "confederacion": "UEFA"},
     {"pais": "Portugal", "confederacion": "UEFA"},
-    {"pais": "Holanda", "confederacion": "UEFA"},
-    {"pais": "Brasil", "confederacion": "CONMEBOL"},
-    {"pais": "Bélgica", "confederacion": "UEFA"},
-    {"pais": "Alemania", "confederacion": "UEFA"}
+    {"pais": "Netherlands", "confederacion": "UEFA"},
+    {"pais": "Brazil", "confederacion": "CONMEBOL"},
+    {"pais": "Belgium", "confederacion": "UEFA"},
+    {"pais": "Germany", "confederacion": "UEFA"}
 ]
 
 DATA_BOMBO_2 = [
-    {"pais": "Croacia", "confederacion": "UEFA"},
-    {"pais": "Marruecos", "confederacion": "CAF"},
+    {"pais": "Croatia", "confederacion": "UEFA"},
+    {"pais": "Morocco", "confederacion": "CAF"},
     {"pais": "Colombia", "confederacion": "CONMEBOL"},
     {"pais": "Uruguay", "confederacion": "CONMEBOL"},
-    {"pais": "Suiza", "confederacion": "UEFA"},
+    {"pais": "Switzerland", "confederacion": "UEFA"},
     {"pais": "Senegal", "confederacion": "CAF"},
-    {"pais": "Japón", "confederacion": "AFC"},
-    {"pais": "Irán", "confederacion": "AFC"},
-    {"pais": "Corea", "confederacion": "AFC"},
+    {"pais": "Japan", "confederacion": "AFC"},
+    {"pais": "Iran", "confederacion": "AFC"},
+    {"pais": "South Korea", "confederacion": "AFC"},
     {"pais": "Austria", "confederacion": "UEFA"},
     {"pais": "Ecuador", "confederacion": "CONMEBOL"},
     {"pais": "Australia", "confederacion": "AFC"}
 ]
 
 DATA_BOMBO_3 = [
-    {"pais": "Noruega", "confederacion": "UEFA"},
-    {"pais": "Panamá", "confederacion": "CONCACAF"},
-    {"pais": "Egipto", "confederacion": "CAF"},
-    {"pais": "Argelia", "confederacion": "CAF"},
-    {"pais": "Escocia", "confederacion": "UEFA"},
+    {"pais": "Norway", "confederacion": "UEFA"},
+    {"pais": "Panama", "confederacion": "CONCACAF"},
+    {"pais": "Egypt", "confederacion": "CAF"},
+    {"pais": "Algeria", "confederacion": "CAF"},
+    {"pais": "Scotland", "confederacion": "UEFA"},
     {"pais": "Paraguay", "confederacion": "CONMEBOL"},
-    {"pais": "Costa de Marfil", "confederacion": "CAF"},
-    {"pais": "Túnez", "confederacion": "CAF"},
-    {"pais": "Sudáfrica", "confederacion": "CAF"},
+    {"pais": "Ivory Coast", "confederacion": "CAF"},
+    {"pais": "Tunisia", "confederacion": "CAF"},
+    {"pais": "South Africa", "confederacion": "CAF"},
     {"pais": "Qatar", "confederacion": "AFC"},
-    {"pais": "Uzbekistán", "confederacion": "AFC"},
-    {"pais": "Arabia Saudí", "confederacion": "AFC"}
+    {"pais": "Uzbekistan", "confederacion": "AFC"},
+    {"pais": "Saudi Arabia", "confederacion": "AFC"}
 ]
 
 DATA_BOMBO_4 = [
-    {"pais": "Jordania", "confederacion": "AFC"},
-    {"pais": "Curazao", "confederacion": "CONCACAF"},
-    {"pais": "Nueva Zelanda", "confederacion": "OFC"},
-    {"pais": "Haití", "confederacion": "CONCACAF"},
+    {"pais": "Jordan", "confederacion": "AFC"},
+    {"pais": "Curacao", "confederacion": "CONCACAF"},
+    {"pais": "New Zealand", "confederacion": "OFC"},
+    {"pais": "Haiti", "confederacion": "CONCACAF"},
     {"pais": "Ghana", "confederacion": "CAF"},
-    {"pais": "Cabo Verde", "confederacion": "CAF"},
+    {"pais": "Cape Verde", "confederacion": "CAF"},
     {"pais": "ICP1", "confederacion": "Variable1"},
     {"pais": "ICP2", "confederacion": "Variable2"},
     {"pais": "UEFA1", "confederacion": "UEFA"},
@@ -88,16 +87,17 @@ country_conf = {}
 for b in (DATA_BOMBO_1 + DATA_BOMBO_2 + DATA_BOMBO_3 + DATA_BOMBO_4):
     country_conf[b["pais"]] = b["confederacion"]
 
+# Mapa ISO alpha-2 (Actualizado a nombres en inglés)
 iso_map = {
-    "México":"mx","Canadá":"ca","USA":"us","España":"es","Argentina":"ar",
-    "Francia":"fr","Inglaterra":"gb","Portugal":"pt","Holanda":"nl","Brasil":"br",
-    "Bélgica":"be","Alemania":"de","Croacia":"hr","Marruecos":"ma","Colombia":"co",
-    "Uruguay":"uy","Suiza":"ch","Senegal":"sn","Japón":"jp","Irán":"ir",
-    "Corea":"kr","Austria":"at","Ecuador":"ec","Australia":"au","Noruega":"no",
-    "Panamá":"pa","Egipto":"eg","Argelia":"dz","Escocia":"gb","Paraguay":"py",
-    "Costa de Marfil":"ci","Túnez":"tn","Sudáfrica":"za","Qatar":"qa","Uzbekistán":"uz",
-    "Arabia Saudí":"sa","Jordania":"jo","Curazao":"cw","Nueva Zelanda":"nz","Haití":"ht",
-    "Ghana":"gh","Cabo Verde":"cv"
+    "Mexico":"mx","Canada":"ca","USA":"us","Spain":"es","Argentina":"ar",
+    "France":"fr","England":"gb","Portugal":"pt","Netherlands":"nl","Brazil":"br",
+    "Belgium":"be","Germany":"de","Croatia":"hr","Morocco":"ma","Colombia":"co",
+    "Uruguay":"uy","Switzerland":"ch","Senegal":"sn","Japan":"jp","Iran":"ir",
+    "South Korea":"kr","Austria":"at","Ecuador":"ec","Australia":"au","Norway":"no",
+    "Panama":"pa","Egypt":"eg","Algeria":"dz","Scotland":"gb","Paraguay":"py",
+    "Ivory Coast":"ci","Tunisia":"tn","South Africa":"za","Qatar":"qa","Uzbekistan":"uz",
+    "Saudi Arabia":"sa","Jordan":"jo","Curacao":"cw","New Zealand":"nz","Haiti":"ht",
+    "Ghana":"gh","Cape Verde":"cv"
 }
 
 # --- FUNCIONES AUXILIARES ---
@@ -123,22 +123,6 @@ def get_flag_image(country_code, size=(20, 15)):
         except Exception as e:
             flag_cache[country_code] = None
     return flag_cache[country_code]
-
-# 3. FUENTE PERSONALIZADA (Para soportar tildes y Ñ)
-@st.cache_resource
-def get_custom_font():
-    # Descargar Roboto-Regular si no existe localmente
-    font_url = "https://github.com/google/fonts/raw/main/apache/roboto/Roboto-Regular.ttf"
-    font_path = "Roboto-Regular.ttf"
-    
-    if not os.path.exists(font_path):
-        try:
-            r = requests.get(font_url, allow_redirects=True)
-            open(font_path, 'wb').write(r.content)
-        except:
-            return None # Fallback si falla la descarga
-            
-    return font_path
 
 # --- INICIALIZAR SESIÓN ---
 if "grupos" not in st.session_state:
@@ -195,7 +179,7 @@ def mostrar_grupos_coloreados():
                 else:
                     html_table += "<tr><td style='padding:6px'>---</td></tr>"
             html_table += "</table>"
-            st.markdown(f"<b>Grupo {letra}</b><br>{html_table}", unsafe_allow_html=True)
+            st.markdown(f"<b>Group {letra}</b><br>{html_table}", unsafe_allow_html=True)
 
 # --- GENERACIÓN DE IMAGEN (PILLOW) ---
 def generar_imagen_resumen():
@@ -204,27 +188,13 @@ def generar_imagen_resumen():
     img = Image.new('RGB', (W, H), color=bg_color)
     d = ImageDraw.Draw(img)
     
-    # Cargar Fuente Roboto
-    font_path = get_custom_font()
-    
-    try:
-        if font_path:
-            font_title = ImageFont.truetype(font_path, 28)
-            font_group = ImageFont.truetype(font_path, 20)
-            font_country = ImageFont.truetype(font_path, 16)
-        else:
-            # Fallback si no hay internet para descargar
-            font_title = ImageFont.load_default()
-            font_group = ImageFont.load_default()
-            font_country = ImageFont.load_default()
-    except:
-        font_title = ImageFont.load_default()
-        font_group = ImageFont.load_default()
-        font_country = ImageFont.load_default()
+    # Usamos fuente por defecto. Como todo está en inglés (ASCII), no habrá problemas.
+    font_title = ImageFont.load_default()
+    font_group = ImageFont.load_default()
+    font_country = ImageFont.load_default()
 
     # Título centrado
-    text = "RESULTADOS SORTEO MUNDIAL"
-    # Compatibilidad con versiones nuevas y viejas de Pillow
+    text = "WORLD CUP 2026 DRAW RESULTS"
     if hasattr(d, 'textbbox'):
         bbox = d.textbbox((0, 0), text, font=font_title)
         text_w = bbox[2] - bbox[0]
@@ -249,7 +219,7 @@ def generar_imagen_resumen():
         
         # Caja Grupo
         d.rectangle([x, y, x + ancho_grupo - 10, y + alto_grupo - 10], fill="white", outline="#ccc", width=1)
-        d.text((x + 10, y + 10), f"GRUPO {letra}", fill="black", font=font_group)
+        d.text((x + 10, y + 10), f"GROUP {letra}", fill="black", font=font_group)
         d.line([x+10, y+35, x + ancho_grupo - 20, y+35], fill="#ddd", width=1)
         
         # Países
@@ -285,7 +255,9 @@ def repartir_bombo1_con_restricciones():
     bombo = st.session_state.bombo1
     if not bombo: return
     
-    fijas = {"México": "A", "Canadá": "B", "USA": "D"}
+    # Restricciones de anfitriones en Inglés
+    fijas = {"Mexico": "A", "Canada": "B", "USA": "D"}
+    
     for pais, grupo in fijas.items():
         obj = next((x for x in bombo if x["pais"] == pais), None)
         if obj:
@@ -407,52 +379,52 @@ def limpiar_grupos_click():
     st.session_state.botones = {"b1": True, "b2": False, "b3": False, "b4": False}
 
 # --- INTERFAZ ---
-st.subheader("🎨 Guía de confederaciones")
+st.subheader("🎨 Confederation Guide")
 cols_conf = st.columns(len(conf_colors))
 for i, conf in enumerate(conf_colors):
     with cols_conf[i]:
         st.markdown(f"<div style='display:flex; align-items:center'><div style='width:20px; height:20px; background-color:{conf_colors[conf]}; margin-right:8px'></div>{conf}</div>", unsafe_allow_html=True)
 
-st.subheader("🎟 Bombos")
+st.subheader("🎟 Pots")
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    st.markdown("**Bombo 1**")
+    st.markdown("**Pot 1**")
     mostrar_bombo_objetos(st.session_state.bombo1)
 with col2:
-    st.markdown("**Bombo 2**")
+    st.markdown("**Pot 2**")
     mostrar_bombo_objetos(st.session_state.bombo2)
 with col3:
-    st.markdown("**Bombo 3**")
+    st.markdown("**Pot 3**")
     mostrar_bombo_objetos(st.session_state.bombo3)
 with col4:
-    st.markdown("**Bombo 4**")
+    st.markdown("**Pot 4**")
     mostrar_bombo_objetos(st.session_state.bombo4)
 
 st.markdown("---")
 col_b1, col_b2, col_b3, col_b4, col_b5 = st.columns(5)
-with col_b1: st.button("Repartir Bombo 1", disabled=not st.session_state.botones["b1"], on_click=repartir_bombo1_click)
-with col_b2: st.button("Repartir Bombo 2", disabled=not st.session_state.botones["b2"], on_click=repartir_bombo2_click)
-with col_b3: st.button("Repartir Bombo 3", disabled=not st.session_state.botones["b3"], on_click=repartir_bombo3_click)
-with col_b4: st.button("Repartir Bombo 4", disabled=not st.session_state.botones["b4"], on_click=repartir_bombo4_click)
-with col_b5: st.button("🔄 Limpiar / Reiniciar", on_click=limpiar_grupos_click)
+with col_b1: st.button("Draw Pot 1", disabled=not st.session_state.botones["b1"], on_click=repartir_bombo1_click)
+with col_b2: st.button("Draw Pot 2", disabled=not st.session_state.botones["b2"], on_click=repartir_bombo2_click)
+with col_b3: st.button("Draw Pot 3", disabled=not st.session_state.botones["b3"], on_click=repartir_bombo3_click)
+with col_b4: st.button("Draw Pot 4", disabled=not st.session_state.botones["b4"], on_click=repartir_bombo4_click)
+with col_b5: st.button("🔄 Reset Draw", on_click=limpiar_grupos_click)
 
 st.markdown("---")
-st.subheader("📋 Grupos")
+st.subheader("📋 Groups")
 mostrar_grupos_coloreados()
 
 if not st.session_state.bombo4 and not st.session_state.botones["b4"]:
     st.markdown("---")
-    st.markdown("## 📤 Compartir Resultados")
+    st.markdown("## 📤 Share Results")
     col_img, col_share = st.columns([1, 2])
     with col_img:
         img_bytes = generar_imagen_resumen()
-        st.download_button(label="📸 Descargar Imagen", data=img_bytes, file_name="sorteo_mundial_2026.png", mime="image/png", use_container_width=True)
+        st.download_button(label="📸 Download Image", data=img_bytes, file_name="wc2026_draw_results.png", mime="image/png", use_container_width=True)
     with col_share:
-        st.info("1. Descarga la imagen a la izquierda. \n2. Selecciona tu red social abajo y adjunta la imagen descargada.")
-        share_text = "¡He simulado el sorteo del Mundial 2026! Mira mis grupos:"
+        st.info("1. Download the image on the left. \n2. Select your social network below and attach the downloaded image.")
+        share_text = "Check out my simulated World Cup 2026 Draw results!"
         share_url = "https://tu-app-streamlit.com"
         wa_url = f"https://api.whatsapp.com/send?text={share_text} {share_url}"
         tw_url = f"https://twitter.com/intent/tweet?text={share_text}&url={share_url}"
         c1, c2 = st.columns(2)
-        with c1: st.markdown(f"""<a href="{wa_url}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer;">Compartir en WhatsApp</button></a>""", unsafe_allow_html=True)
-        with c2: st.markdown(f"""<a href="{tw_url}" target="_blank"><button style="background-color:#1DA1F2; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer;">Compartir en X</button></a>""", unsafe_allow_html=True)
+        with c1: st.markdown(f"""<a href="{wa_url}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer;">Share on WhatsApp</button></a>""", unsafe_allow_html=True)
+        with c2: st.markdown(f"""<a href="{tw_url}" target="_blank"><button style="background-color:#1DA1F2; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer;">Share on X</button></a>""", unsafe_allow_html=True)
