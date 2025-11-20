@@ -3,7 +3,7 @@ import random
 import copy
 import io
 from PIL import Image, ImageDraw, ImageFont
-import requests # <--- Nueva importación
+import requests 
 
 # --- Configuración de la página ---
 st.set_page_config(page_title="Simulador Sorteo WC2026", layout="wide")
@@ -22,8 +22,6 @@ conf_colors = {
 }
 
 # --- DATOS MAESTROS (CONSTANTES) ---
-# Estos datos no se tocan, sirven para reiniciar la simulación.
-
 DATA_BOMBO_1 = [
     {"pais": "México", "confederacion": "CONCACAF"},
     {"pais": "Canadá", "confederacion": "CONCACAF"},
@@ -85,12 +83,10 @@ DATA_BOMBO_4 = [
 ]
 
 # --- MAPAS DE REFERENCIA ---
-# Mapa país -> confederación
 country_conf = {}
 for b in (DATA_BOMBO_1 + DATA_BOMBO_2 + DATA_BOMBO_3 + DATA_BOMBO_4):
     country_conf[b["pais"]] = b["confederacion"]
 
-# Mapa ISO alpha-2 para banderas
 iso_map = {
     "México":"mx","Canadá":"ca","USA":"us","España":"es","Argentina":"ar",
     "Francia":"fr","Inglaterra":"gb","Portugal":"pt","Holanda":"nl","Brasil":"br",
@@ -103,36 +99,39 @@ iso_map = {
     "Ghana":"gh","Cabo Verde":"cv"
 }
 
-# --- Cache para banderas (descarga una vez) ---
-flag_cache = {}
+# --- FUNCIONES DE BANDERAS ---
 
-def get_flag_image(country_code, size=(20, 15)): # Tamaño optimizado para la imagen de resumen
+# 1. Para mostrar en HTML (Streamlit UI)
+def flag_url_for(country):
+    code = iso_map.get(country)
+    if not code: return ""
+    return f"https://flagcdn.com/w40/{code}.png"
+
+# 2. Para descargar y pegar en la imagen (Pillow)
+flag_cache = {}
+def get_flag_image(country_code, size=(20, 15)):
     if country_code not in flag_cache:
-        url = f"https://flagcdn.com/w40/{country_code}.png" # Usamos la versión de 40px para mejor calidad
+        url = f"https://flagcdn.com/w40/{country_code}.png"
         try:
             response = requests.get(url, timeout=5)
-            response.raise_for_status() # Lanza una excepción para errores HTTP
+            response.raise_for_status()
             img_data = response.content
-            flag_img = Image.open(io.BytesIO(img_data)).convert("RGBA") # Convertir a RGBA para transparencia
-            flag_img = flag_img.resize(size, Image.LANCZOS) # Redimensionar con filtro de alta calidad
+            flag_img = Image.open(io.BytesIO(img_data)).convert("RGBA")
+            flag_img = flag_img.resize(size, Image.LANCZOS)
             flag_cache[country_code] = flag_img
-        except requests.exceptions.RequestException as e:
-            st.warning(f"No se pudo cargar la bandera de {country_code}: {e}")
-            flag_cache[country_code] = None # Guardar None para no intentar de nuevo
         except Exception as e:
-            st.warning(f"Error procesando la bandera de {country_code}: {e}")
+            # st.warning(f"No se pudo cargar bandera: {e}") # Opcional: comentar para no ensuciar la UI
             flag_cache[country_code] = None
     return flag_cache[country_code]
 
 
-# --- INICIALIZAR SESIÓN (ESTADO) ---
+# --- INICIALIZAR SESIÓN ---
 if "grupos" not in st.session_state:
     st.session_state.grupos = {chr(65+i): [None]*4 for i in range(12)}
 
 if "botones" not in st.session_state:
     st.session_state.botones = {"b1": True, "b2": False, "b3": False, "b4": False}
 
-# Cargamos los bombos DE TRABAJO en sesión (copias de los datos maestros)
 if "bombo1" not in st.session_state:
     st.session_state.bombo1 = copy.deepcopy(DATA_BOMBO_1)
 if "bombo2" not in st.session_state:
@@ -190,27 +189,31 @@ def generar_imagen_resumen():
     img = Image.new('RGB', (W, H), color=bg_color)
     d = ImageDraw.Draw(img)
     
-    # Intentar cargar una fuente, si no usar default.
     try:
-        # Rutas comunes para Arial en Windows/Mac. En Linux/Streamlit Cloud puede variar.
-        # Si no la encuentra, load_default() es el fallback.
-        try: # Windows
+        # Fuentes
+        try:
             font_title = ImageFont.truetype("arial.ttf", 28) 
             font_group = ImageFont.truetype("arial.ttf", 20)
             font_country = ImageFont.truetype("arial.ttf", 16)
-        except IOError: # Mac/Linux o Streamlit Cloud si no está en PATH
-            font_title = ImageFont.truetype("Arial.ttf", 28) # A veces es Arial.ttf
+        except IOError:
+            font_title = ImageFont.truetype("Arial.ttf", 28)
             font_group = ImageFont.truetype("Arial.ttf", 20)
             font_country = ImageFont.truetype("Arial.ttf", 16)
     except IOError:
         font_title = ImageFont.load_default()
         font_group = ImageFont.load_default()
         font_country = ImageFont.load_default()
-        st.warning("No se encontró una fuente 'Arial'. Usando fuente por defecto. La imagen podría verse diferente.")
 
-    # Título
-    text_w, text_h = d.textsize("RESULTADOS SORTEO MUNDIAL", font=font_title)
-    d.text(((W - text_w) / 2, 20), "RESULTADOS SORTEO MUNDIAL", fill=(0,0,0), font=font_title)
+    # Título centrado
+    text = "RESULTADOS SORTEO MUNDIAL"
+    # .textsize está deprecado en versiones nuevas de Pillow, usamos textbbox si está disponible
+    if hasattr(d, 'textbbox'):
+        bbox = d.textbbox((0, 0), text, font=font_title)
+        text_w = bbox[2] - bbox[0]
+    else:
+        text_w, _ = d.textsize(text, font=font_title)
+        
+    d.text(((W - text_w) / 2, 20), text, fill=(0,0,0), font=font_title)
 
     # Grilla
     margen_x = 20
@@ -226,31 +229,28 @@ def generar_imagen_resumen():
         x = margen_x + (columna * ancho_grupo) + 5
         y = margen_y + (fila * alto_grupo) + 20
         
-        # Caja Grupo
         d.rectangle([x, y, x + ancho_grupo - 10, y + alto_grupo - 10], fill="white", outline="#ccc", width=1)
         d.text((x + 10, y + 10), f"GRUPO {letra}", fill="black", font=font_group)
         d.line([x+10, y+35, x + ancho_grupo - 20, y+35], fill="#ddd", width=1)
         
-        # Países
         paises = st.session_state.grupos[letra]
         for idx, pais in enumerate(paises):
-            y_pais = y + 50 + (idx * 35) # Ajustar la separación vertical para la bandera
+            y_pais = y + 50 + (idx * 35)
             if pais:
                 conf = country_conf.get(pais, "Variable")
                 hex_color = conf_colors.get(conf, "#000000")
                 
                 d.rectangle([x + 10, y_pais, x + 15, y_pais + 20], fill=hex_color)
                 
-                # --- LÓGICA PARA BANDERAS EN LA IMAGEN ---
                 country_code = iso_map.get(pais)
                 if country_code:
                     flag_img = get_flag_image(country_code)
                     if flag_img:
-                        img.paste(flag_img, (int(x + 25), int(y_pais + 2)), flag_img) # Pegar bandera
-                        d.text((x + 25 + flag_img.width + 5, y_pais + 2), pais, fill="black", font=font_country) # Texto después de bandera
-                    else: # Si bandera no se pudo cargar
+                        img.paste(flag_img, (int(x + 25), int(y_pais + 2)), flag_img)
+                        d.text((x + 25 + flag_img.width + 5, y_pais + 2), pais, fill="black", font=font_country)
+                    else:
                         d.text((x + 25, y_pais + 2), pais, fill="black", font=font_country)
-                else: # Si no hay código ISO para el país
+                else:
                     d.text((x + 25, y_pais + 2), pais, fill="black", font=font_country)
             else:
                 d.text((x + 25, y_pais + 2), "---", fill="gray", font=font_country)
@@ -259,24 +259,19 @@ def generar_imagen_resumen():
     img.save(buf, format="PNG")
     return buf.getvalue()
 
-
 # --- LÓGICA DE SORTEO ---
 
-# 1. BOMBO 1 (Cabezas de serie)
 def repartir_bombo1_con_restricciones():
     bombo = st.session_state.bombo1
     if not bombo: return
     
     fijas = {"México": "A", "Canadá": "B", "USA": "D"}
-    
-    # Asignar anfitriones
     for pais, grupo in fijas.items():
         obj = next((x for x in bombo if x["pais"] == pais), None)
         if obj:
             st.session_state.grupos[grupo][0] = obj["pais"]
             bombo.remove(obj)
             
-    # Repartir resto
     paises_restantes = bombo.copy()
     grupos_restantes = [l for l in st.session_state.grupos if l not in fijas.values()]
     random.shuffle(paises_restantes)
@@ -289,10 +284,8 @@ def repartir_bombo1_con_restricciones():
     st.session_state.botones["b1"] = False
     st.session_state.botones["b2"] = True
 
-# 2. BOMBOS GENERÍCOS (2 y 3) - Backtracking
 def repartir_bombo_generico(bombo_list, posicion, key_actual, key_siguiente):
     if not bombo_list: return
-    
     estado_inicial = copy.deepcopy(st.session_state.grupos)
     paises_a_repartir = bombo_list.copy()
     
@@ -300,12 +293,10 @@ def repartir_bombo_generico(bombo_list, posicion, key_actual, key_siguiente):
         st.session_state.grupos = copy.deepcopy(estado_inicial)
         random.shuffle(paises_a_repartir)
         exito_bombo = True
-        
         for pais_obj in paises_a_repartir:
             asignado = False
             letras = list(st.session_state.grupos.keys())
             random.shuffle(letras)
-            
             for letra in letras:
                 grupo = st.session_state.grupos[letra]
                 if grupo[posicion] is not None: continue
@@ -324,24 +315,19 @@ def repartir_bombo_generico(bombo_list, posicion, key_actual, key_siguiente):
                     st.session_state.grupos[letra][posicion] = pais_obj["pais"]
                     asignado = True
                     break
-            
             if not asignado:
                 exito_bombo = False
                 break
-        
         if exito_bombo: break
 
     bombo_list.clear()
     st.session_state.botones[key_actual] = False
-    if key_siguiente: 
-        st.session_state.botones[key_siguiente] = True
+    if key_siguiente: st.session_state.botones[key_siguiente] = True
 
-# 3. BOMBO 4 (Especial ICP)
 def repartir_bombo4_especial():
     bombo_list = st.session_state.bombo4
     if not bombo_list: return
     
-    # Restricciones compuestas
     restricciones_icp1 = ["CAF", "CONCACAF", "OFC"]
     restricciones_icp2 = ["AFC", "CONCACAF", "CONMEBOL"]
     
@@ -353,12 +339,10 @@ def repartir_bombo4_especial():
         st.session_state.grupos = copy.deepcopy(estado_inicial)
         random.shuffle(paises_a_repartir)
         exito_bombo = True
-        
         for pais_obj in paises_a_repartir:
             asignado = False
             letras = list(st.session_state.grupos.keys())
             random.shuffle(letras)
-            
             for letra in letras:
                 grupo = st.session_state.grupos[letra]
                 if grupo[posicion] is not None: continue
@@ -368,74 +352,46 @@ def repartir_bombo4_especial():
                 mi_conf = pais_obj["confederacion"]
                 
                 es_valido = False
-                
-                if mi_conf == "Variable1": # ICP1
-                    if not any(c in confs_grupo for c in restricciones_icp1):
-                        es_valido = True
-                        
-                elif mi_conf == "Variable2": # ICP2
-                    if not any(c in confs_grupo for c in restricciones_icp2):
-                        es_valido = True
-                        
+                if mi_conf == "Variable1":
+                    if not any(c in confs_grupo for c in restricciones_icp1): es_valido = True
+                elif mi_conf == "Variable2":
+                    if not any(c in confs_grupo for c in restricciones_icp2): es_valido = True
                 elif mi_conf == "UEFA":
                     if uefa_count < 2: es_valido = True
-                        
-                else: # Resto normal
+                else:
                     if mi_conf not in confs_grupo: es_valido = True
                 
                 if es_valido:
                     st.session_state.grupos[letra][posicion] = pais_obj["pais"]
                     asignado = True
                     break
-            
             if not asignado:
                 exito_bombo = False
                 break
-        
         if exito_bombo: break
 
     bombo_list.clear()
     st.session_state.botones["b4"] = False
 
-
-# --- CALLBACKS (BOTONES) ---
-def repartir_bombo1_click():
-    repartir_bombo1_con_restricciones()
-
-def repartir_bombo2_click():
-    repartir_bombo_generico(st.session_state.bombo2, 1, "b2", "b3")
-
-def repartir_bombo3_click():
-    repartir_bombo_generico(st.session_state.bombo3, 2, "b3", "b4")
-
-def repartir_bombo4_click():
-    repartir_bombo4_especial()
-
+# --- CALLBACKS ---
+def repartir_bombo1_click(): repartir_bombo1_con_restricciones()
+def repartir_bombo2_click(): repartir_bombo_generico(st.session_state.bombo2, 1, "b2", "b3")
+def repartir_bombo3_click(): repartir_bombo_generico(st.session_state.bombo3, 2, "b3", "b4")
+def repartir_bombo4_click(): repartir_bombo4_especial()
 def limpiar_grupos_click():
-    # Reiniciar Grupos
-    for letra in st.session_state.grupos:
-        st.session_state.grupos[letra] = [None] * 4
-    # Restaurar Bombos desde MAESTROS
+    for letra in st.session_state.grupos: st.session_state.grupos[letra] = [None] * 4
     st.session_state.bombo1 = copy.deepcopy(DATA_BOMBO_1)
     st.session_state.bombo2 = copy.deepcopy(DATA_BOMBO_2)
     st.session_state.bombo3 = copy.deepcopy(DATA_BOMBO_3)
     st.session_state.bombo4 = copy.deepcopy(DATA_BOMBO_4)
-    # Restaurar botones
     st.session_state.botones = {"b1": True, "b2": False, "b3": False, "b4": False}
 
-
-# --- INTERFAZ PRINCIPAL ---
-
+# --- INTERFAZ ---
 st.subheader("🎨 Guía de confederaciones")
 cols_conf = st.columns(len(conf_colors))
 for i, conf in enumerate(conf_colors):
     with cols_conf[i]:
-        st.markdown(
-            f"<div style='display:flex; align-items:center'>"
-            f"<div style='width:20px; height:20px; background-color:{conf_colors[conf]}; margin-right:8px'></div>"
-            f"{conf}</div>",
-            unsafe_allow_html=True
-        )
+        st.markdown(f"<div style='display:flex; align-items:center'><div style='width:20px; height:20px; background-color:{conf_colors[conf]}; margin-right:8px'></div>{conf}</div>", unsafe_allow_html=True)
 
 st.subheader("🎟 Bombos")
 col1, col2, col3, col4 = st.columns(4)
@@ -454,23 +410,29 @@ with col4:
 
 st.markdown("---")
 col_b1, col_b2, col_b3, col_b4, col_b5 = st.columns(5)
-with col_b1:
-    st.button("Repartir Bombo 1", disabled=not st.session_state.botones["b1"], on_click=repartir_bombo1_click)
-with col_b2:
-    st.button("Repartir Bombo 2", disabled=not st.session_state.botones["b2"], on_click=repartir_bombo2_click)
-with col_b3:
-    st.button("Repartir Bombo 3", disabled=not st.session_state.botones["b3"], on_click=repartir_bombo3_click)
-with col_b4:
-    st.button("Repartir Bombo 4", disabled=not st.session_state.botones["b4"], on_click=repartir_bombo4_click)
-with col_b5:
-    st.button("🔄 Limpiar / Reiniciar", on_click=limpiar_grupos_click)
+with col_b1: st.button("Repartir Bombo 1", disabled=not st.session_state.botones["b1"], on_click=repartir_bombo1_click)
+with col_b2: st.button("Repartir Bombo 2", disabled=not st.session_state.botones["b2"], on_click=repartir_bombo2_click)
+with col_b3: st.button("Repartir Bombo 3", disabled=not st.session_state.botones["b3"], on_click=repartir_bombo3_click)
+with col_b4: st.button("Repartir Bombo 4", disabled=not st.session_state.botones["b4"], on_click=repartir_bombo4_click)
+with col_b5: st.button("🔄 Limpiar / Reiniciar", on_click=limpiar_grupos_click)
 
 st.markdown("---")
 st.subheader("📋 Grupos")
 mostrar_grupos_coloreados()
 
-# --- SECCIÓN DE DESCARGA Y COMPARTIR ---
-# Se muestra solo si el bombo 4 ya fue sorteado
 if not st.session_state.bombo4 and not st.session_state.botones["b4"]:
     st.markdown("---")
     st.markdown("## 📤 Compartir Resultados")
+    col_img, col_share = st.columns([1, 2])
+    with col_img:
+        img_bytes = generar_imagen_resumen()
+        st.download_button(label="📸 Descargar Imagen", data=img_bytes, file_name="sorteo_mundial_2026.png", mime="image/png", use_container_width=True)
+    with col_share:
+        st.info("1. Descarga la imagen a la izquierda. \n2. Selecciona tu red social abajo y adjunta la imagen descargada.")
+        share_text = "¡He simulado el sorteo del Mundial 2026! Mira mis grupos:"
+        share_url = "https://tu-app-streamlit.com"
+        wa_url = f"https://api.whatsapp.com/send?text={share_text} {share_url}"
+        tw_url = f"https://twitter.com/intent/tweet?text={share_text}&url={share_url}"
+        c1, c2 = st.columns(2)
+        with c1: st.markdown(f"""<a href="{wa_url}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer;">Compartir en WhatsApp</button></a>""", unsafe_allow_html=True)
+        with c2: st.markdown(f"""<a href="{tw_url}" target="_blank"><button style="background-color:#1DA1F2; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer;">Compartir en X</button></a>""", unsafe_allow_html=True)
