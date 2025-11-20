@@ -12,19 +12,59 @@ SUPABASE_KEY = "sb_publishable_q_7GWwouWZKDrNWsE9MSXQ_qQxlRdNX"
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def guardar_simulacion_en_bd(grupos):
-    """Guarda una simulación completa en Supabase como JSON."""
     try:
-        payload = {
-            "datos": grupos
-        }
+        payload = { "datos": grupos }
         supabase.table("simulaciones").insert(payload).execute()
-        st.success("Simulation completed! ✔️")
+        st.toast("Simulation saved! ✔️") # Usamos toast para que sea menos intrusivo
     except Exception as e:
-        # st.error(f"Error al completar simulación: {e}") # Descomentar para debug
         pass
 
 # --- Configuración de la página ---
 st.set_page_config(page_title="WC2026 Draw Simulator", layout="wide")
+
+# --- INYECCIÓN DE CSS (ESTILOS RESPONSIVE) ---
+st.markdown("""
+<style>
+    /* Contenedor flexible para las confederaciones */
+    .conf-guide {
+        display: flex;
+        flex-wrap: wrap; /* Permite que bajen a la siguiente linea si no caben */
+        gap: 10px;
+        justify-content: center; /* Centrado */
+        margin-bottom: 20px;
+        padding: 10px;
+        background-color: #f0f2f6;
+        border-radius: 10px;
+    }
+    
+    /* Items individuales de la guía */
+    .conf-item {
+        display: flex;
+        align-items: center;
+        font-size: 14px;
+        font-weight: bold;
+        background-color: white;
+        padding: 5px 10px;
+        border-radius: 5px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    /* Cuadrito de color */
+    .conf-color-box {
+        width: 15px;
+        height: 15px;
+        margin-right: 8px;
+        border-radius: 3px;
+    }
+
+    /* Ajustes para móviles en títulos */
+    @media (max-width: 768px) {
+        h1 { font-size: 1.8rem !important; text-align: center; }
+        .stButton button { width: 100%; } /* Botones full width en móvil */
+    }
+</style>
+""", unsafe_allow_html=True)
+
 st.title("🌍 WC2026 Draw Simulator")
 
 # --- COLORES ---
@@ -56,7 +96,7 @@ DATA_BOMBO_1 = [
 ]
 
 DATA_BOMBO_2 = [
-    {"pais": "Croatia", "confederacion": "UEFA"},
+    {"pais": "Croacia", "confederacion": "UEFA"},
     {"pais": "Morocco", "confederacion": "CAF"},
     {"pais": "Colombia", "confederacion": "CONMEBOL"},
     {"pais": "Uruguay", "confederacion": "CONMEBOL"},
@@ -108,7 +148,7 @@ for b in (DATA_BOMBO_1 + DATA_BOMBO_2 + DATA_BOMBO_3 + DATA_BOMBO_4):
 iso_map = {
     "Mexico":"mx","Canada":"ca","USA":"us","Spain":"es","Argentina":"ar",
     "France":"fr","England":"gb","Portugal":"pt","Netherlands":"nl","Brazil":"br",
-    "Belgium":"be","Germany":"de","Croatia":"hr","Morocco":"ma","Colombia":"co",
+    "Belgium":"be","Germany":"de","Croacia":"hr","Morocco":"ma","Colombia":"co",
     "Uruguay":"uy","Switzerland":"ch","Senegal":"sn","Japan":"jp","Iran":"ir",
     "South Korea":"kr","Austria":"at","Ecuador":"ec","Australia":"au","Norway":"no",
     "Panama":"pa","Egypt":"eg","Algeria":"dz","Scotland":"gb","Paraguay":"py",
@@ -118,7 +158,6 @@ iso_map = {
 }
 
 # --- FUNCIONES AUXILIARES ---
-
 def flag_url_for(country):
     code = iso_map.get(country)
     if not code: return ""
@@ -157,44 +196,51 @@ if "bombo4" not in st.session_state:
 
 # --- FUNCIONES DE UI ---
 def mostrar_bombo_objetos(bombo):
-    for item in bombo:
+    # Versión compacta para la parte inferior
+    if not bombo:
+        st.caption("Empty Pot / Sorteado")
+        return
+        
+    # Mostramos en 3 columnas para ahorrar espacio
+    cols = st.columns(3)
+    for i, item in enumerate(bombo):
+        col = cols[i % 3]
         color = conf_colors.get(item["confederacion"], "#FFFFFF")
         bandera_url = flag_url_for(item["pais"])
-        img_html = f"<img src='{bandera_url}' width='24' style='margin-left:8px; vertical-align:middle'/>" if bandera_url else "&#10067;"
+        img_html = f"<img src='{bandera_url}' width='16' style='margin-left:4px; vertical-align:middle'/>" if bandera_url else ""
         
-        st.markdown(
-            f"<div style='padding:8px; border-radius:8px; margin-bottom:4px; display:flex; align-items:center; justify-content:space-between'>"
-            f"<div style='display:flex; align-items:center'><span style='display:inline-block; width:8px; height:24px; background-color:{color}; margin-right:8px; vertical-align:middle'></span>"
-            f"{item['pais']}</div>"
-            f"<div>{img_html}</div>"
-            f"</div>",
-            unsafe_allow_html=True
-        )
+        with col:
+            st.markdown(
+                f"<div style='font-size:12px; margin-bottom:2px; display:flex; align-items:center;'>"
+                f"<span style='display:inline-block; width:6px; height:12px; background-color:{color}; margin-right:4px;'></span>"
+                f"{item['pais']} {img_html}</div>",
+                unsafe_allow_html=True
+            )
 
 def mostrar_grupos_coloreados():
     cols = st.columns(6)
     for i, letra in enumerate(st.session_state.grupos):
         with cols[i % 6]:
-            html_table = "<table style='border-collapse:collapse; width:100%'>"
+            html_table = "<table style='border-collapse:collapse; width:100%; margin-bottom:10px;'>"
             for idx, pais in enumerate(st.session_state.grupos[letra]):
                 if pais:
                     conf = country_conf.get(pais)
                     color = conf_colors.get(conf, "#000000")
                     bandera_url = flag_url_for(pais)
-                    bandera_html = f"<img src='{bandera_url}' width='24' style='margin-left:8px; vertical-align:middle'/>" if bandera_url else "&#10067;"
+                    bandera_html = f"<img src='{bandera_url}' width='20' style='margin-left:5px; vertical-align:middle'/>" if bandera_url else ""
                     
                     html_table += (
                         f"<tr>"
-                        f"<td style='padding:6px; border-left:8px solid {color}; display:flex; justify-content:space-between; align-items:center'>"
-                        f"<div style='flex:1'>{pais}</div>"
-                        f"<div style='margin-left:8px'>{bandera_html}</div>"
+                        f"<td style='padding:4px; border-left:6px solid {color}; font-size:13px; display:flex; justify-content:space-between; align-items:center'>"
+                        f"<div style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{pais}</div>"
+                        f"<div>{bandera_html}</div>"
                         f"</td>"
                         f"</tr>"
                     )
                 else:
-                    html_table += "<tr><td style='padding:6px'>---</td></tr>"
+                    html_table += "<tr><td style='padding:4px; color:#ccc; font-size:13px;'>---</td></tr>"
             html_table += "</table>"
-            st.markdown(f"<b>Group {letra}</b><br>{html_table}", unsafe_allow_html=True)
+            st.markdown(f"<div style='text-align:center; font-weight:bold; margin-bottom:2px;'>Group {letra}</div>{html_table}", unsafe_allow_html=True)
 
 # --- GENERACIÓN DE IMAGEN (PILLOW) ---
 def generar_imagen_resumen():
@@ -258,50 +304,39 @@ def generar_imagen_resumen():
     img.save(buf, format="PNG")
     return buf.getvalue()
 
-# --- LÓGICA DE SORTEO ---
-
+# --- LÓGICA DE SORTEO (Igual a la anterior, solo callbacks) ---
 def repartir_bombo1_con_restricciones():
     bombo = st.session_state.bombo1
     if not bombo: return
-    
     fijas = {"Mexico": "A", "Canada": "B", "USA": "D"}
-    
     for pais, grupo in fijas.items():
         obj = next((x for x in bombo if x["pais"] == pais), None)
         if obj:
             st.session_state.grupos[grupo][0] = obj["pais"]
             bombo.remove(obj)
-            
     paises_restantes = bombo.copy()
     grupos_restantes = [l for l in st.session_state.grupos if l not in fijas.values()]
     random.shuffle(paises_restantes)
-    
     for i, letra in enumerate(grupos_restantes):
         if i < len(paises_restantes):
             st.session_state.grupos[letra][0] = paises_restantes[i]["pais"]
-            
     st.session_state.bombo1.clear()
     st.session_state.botones["b1"] = False
     st.session_state.botones["b2"] = True
 
-# --- BOMBO 2: Lógica estándar (Sin cambios mayores) ---
 def repartir_bombo2():
     bombo_list = st.session_state.bombo2
     if not bombo_list: return
-    
     estado_inicial = copy.deepcopy(st.session_state.grupos)
     paises_a_repartir = bombo_list.copy()
-    posicion = 1 # Indice 1
-    
+    posicion = 1
     max_intentos = 5000
     intentos = 0
-
     while intentos < max_intentos:
         intentos += 1
         st.session_state.grupos = copy.deepcopy(estado_inicial)
         random.shuffle(paises_a_repartir)
         exito_bombo = True
-        
         for pais_obj in paises_a_repartir:
             asignado = False
             letras = list(st.session_state.grupos.keys())
@@ -309,17 +344,14 @@ def repartir_bombo2():
             for letra in letras:
                 grupo = st.session_state.grupos[letra]
                 if grupo[posicion] is not None: continue
-                
                 confs_grupo = [country_conf.get(p) for p in grupo if p]
                 uefa_count = confs_grupo.count("UEFA")
                 mi_conf = pais_obj["confederacion"]
-                
                 es_valido = False
                 if mi_conf == "UEFA":
                     if uefa_count < 2: es_valido = True
                 else:
                     if mi_conf not in confs_grupo: es_valido = True
-                
                 if es_valido:
                     st.session_state.grupos[letra][posicion] = pais_obj["pais"]
                     asignado = True
@@ -328,39 +360,28 @@ def repartir_bombo2():
                 exito_bombo = False
                 break
         if exito_bombo: break
-    
     if intentos < max_intentos:
         st.session_state.bombo2.clear()
         st.session_state.botones["b2"] = False
         st.session_state.botones["b3"] = True
     else:
-        st.error("No se pudo repartir el Bombo 2. Intente reiniciar.")
+        st.error("Retry Pot 2")
 
-# --- BOMBO 3: Lógica Estándar + VALIDACIONES GLOBALES ---
 def repartir_bombo3():
     bombo_list = st.session_state.bombo3
     if not bombo_list: return
-    
     estado_inicial = copy.deepcopy(st.session_state.grupos)
     paises_a_repartir = bombo_list.copy()
-    posicion = 2 # Indice 2
-    
-    max_intentos = 10000 # Un poco más alto por la validación global
+    posicion = 2
+    max_intentos = 10000
     intentos = 0
-
-    # Listas de exclusión para las condiciones globales
-    # Condición 1: Grupo sin AFC, CONCACAF, CONMEBOL
     exclusion_c1 = ["AFC", "CONCACAF", "CONMEBOL"]
-    # Condición 2: Grupo sin CAF, CONCACAF
     exclusion_c2 = ["CAF", "CONCACAF"]
-
     while intentos < max_intentos:
         intentos += 1
         st.session_state.grupos = copy.deepcopy(estado_inicial)
         random.shuffle(paises_a_repartir)
         exito_bombo = True
-        
-        # 1. Reparto Normal
         for pais_obj in paises_a_repartir:
             asignado = False
             letras = list(st.session_state.grupos.keys())
@@ -368,17 +389,14 @@ def repartir_bombo3():
             for letra in letras:
                 grupo = st.session_state.grupos[letra]
                 if grupo[posicion] is not None: continue
-                
                 confs_grupo = [country_conf.get(p) for p in grupo if p]
                 uefa_count = confs_grupo.count("UEFA")
                 mi_conf = pais_obj["confederacion"]
-                
                 es_valido = False
                 if mi_conf == "UEFA":
                     if uefa_count < 2: es_valido = True
                 else:
                     if mi_conf not in confs_grupo: es_valido = True
-                
                 if es_valido:
                     st.session_state.grupos[letra][posicion] = pais_obj["pais"]
                     asignado = True
@@ -386,115 +404,78 @@ def repartir_bombo3():
             if not asignado:
                 exito_bombo = False
                 break
-        
-        # 2. Si el reparto fue exitoso, validamos las reglas GLOBALES
         if exito_bombo:
-            condicion1_ok = False # Al menos 1 grupo sin AFC, CONCACAF, CONMEBOL
-            condicion2_ok = False # Al menos 1 grupo sin CAF, CONCACAF
-            
+            condicion1_ok = False
+            condicion2_ok = False
             for letra in st.session_state.grupos:
                 grupo = st.session_state.grupos[letra]
-                # Obtenemos confederaciones de los 3 países asignados hasta ahora
                 confs_actuales = [country_conf.get(p) for p in grupo if p]
-                
-                # Verificar Condición 1
-                # Si NINGUNA de las prohibidas está en confs_actuales, este grupo cumple
-                if not any(c in exclusion_c1 for c in confs_actuales):
-                    condicion1_ok = True
-                
-                # Verificar Condición 2
-                if not any(c in exclusion_c2 for c in confs_actuales):
-                    condicion2_ok = True
-            
-            # Si ambas condiciones globales se cumplen, terminamos
-            if condicion1_ok and condicion2_ok:
-                break
-            else:
-                # Si no se cumplen, forzamos reintento
-                exito_bombo = False
-    
+                if not any(c in exclusion_c1 for c in confs_actuales): condicion1_ok = True
+                if not any(c in exclusion_c2 for c in confs_actuales): condicion2_ok = True
+            if condicion1_ok and condicion2_ok: break
+            else: exito_bombo = False
     if intentos < max_intentos:
         st.session_state.bombo3.clear()
         st.session_state.botones["b3"] = False
         st.session_state.botones["b4"] = True
     else:
-        st.error("Error en Bombo 3: No se pudo cumplir con las reglas globales. Intente de nuevo.")
+        st.error("Retry Pot 3")
 
 def repartir_bombo4_especial():
     bombo_list = st.session_state.bombo4
     if not bombo_list: return
-    
-    # Restricciones compuestas
     restricciones_icp1 = ["CAF", "CONCACAF", "OFC"]
     restricciones_icp2 = ["AFC", "CONCACAF", "CONMEBOL"]
-    
     estado_inicial = copy.deepcopy(st.session_state.grupos)
     paises_a_repartir = bombo_list.copy()
     posicion = 3 
-    
     max_intentos = 5000 
     intentos = 0
-    
-    with st.spinner('Calculando probabilidades del sorteo...'):
+    with st.spinner('Calculating...'):
         while intentos < max_intentos:
             intentos += 1
-            
             st.session_state.grupos = copy.deepcopy(estado_inicial)
             random.shuffle(paises_a_repartir)
             exito_bombo = True
-            
             for pais_obj in paises_a_repartir:
                 asignado = False
                 letras = list(st.session_state.grupos.keys())
                 random.shuffle(letras)
-                
                 for letra in letras:
                     grupo = st.session_state.grupos[letra]
                     if grupo[posicion] is not None: continue
-                    
                     confs_grupo = [country_conf.get(p) for p in grupo if p]
                     uefa_count = confs_grupo.count("UEFA")
                     mi_conf = pais_obj["confederacion"]
-                    
                     es_valido = False
-                    
-                    if mi_conf == "Variable1": # ICP1
-                        if not any(c in confs_grupo for c in restricciones_icp1):
-                            es_valido = True
-                            
-                    elif mi_conf == "Variable2": # ICP2
-                        if not any(c in confs_grupo for c in restricciones_icp2):
-                            es_valido = True
-                            
+                    if mi_conf == "Variable1": 
+                        if not any(c in confs_grupo for c in restricciones_icp1): es_valido = True
+                    elif mi_conf == "Variable2": 
+                        if not any(c in confs_grupo for c in restricciones_icp2): es_valido = True
                     elif mi_conf == "UEFA":
                         if uefa_count < 2: es_valido = True
-                            
-                    else: # Resto normal
+                    else:
                         if mi_conf not in confs_grupo: es_valido = True
-                    
                     if es_valido:
                         st.session_state.grupos[letra][posicion] = pais_obj["pais"]
                         asignado = True
                         break
-                
                 if not asignado:
                     exito_bombo = False
                     break
-            
             if exito_bombo: break
-
     if intentos >= max_intentos:
-        st.error("⚠️ Conflicto de restricciones en Bombo 4. Intenta de nuevo.")
+        st.error("Constraint conflict. Try Pot 4 again.")
         st.session_state.grupos = copy.deepcopy(estado_inicial)
     else:
         st.session_state.bombo4.clear()
         st.session_state.botones["b4"] = False
-        # st.success(f"¡Sorteo completado!")
+        st.success("Draw Complete!")
 
 # --- CALLBACKS ---
 def repartir_bombo1_click(): repartir_bombo1_con_restricciones()
-def repartir_bombo2_click(): repartir_bombo2() # Nueva función
-def repartir_bombo3_click(): repartir_bombo3() # Nueva función
+def repartir_bombo2_click(): repartir_bombo2()
+def repartir_bombo3_click(): repartir_bombo3()
 def repartir_bombo4_click(): repartir_bombo4_especial()
 def limpiar_grupos_click():
     for letra in st.session_state.grupos: st.session_state.grupos[letra] = [None] * 4
@@ -504,13 +485,53 @@ def limpiar_grupos_click():
     st.session_state.bombo4 = copy.deepcopy(DATA_BOMBO_4)
     st.session_state.botones = {"b1": True, "b2": False, "b3": False, "b4": False}
 
-# --- INTERFAZ ---
-cols_conf = st.columns(len(conf_colors))
-for i, conf in enumerate(conf_colors):
-    with cols_conf[i]:
-        st.markdown(f"<div style='display:flex; align-items:center'><div style='width:20px; height:20px; background-color:{conf_colors[conf]}; margin-right:8px'></div>{conf}</div>", unsafe_allow_html=True)
+# --- UI LAYOUT ORGANIZADO ---
 
-st.subheader("🎟 Pots")
+# 1. Guía de Confederaciones (HTML Flexbox horizontal responsive)
+html_conf = '<div class="conf-guide">'
+for conf, color in conf_colors.items():
+    html_conf += f'<div class="conf-item"><div class="conf-color-box" style="background-color:{color};"></div>{conf}</div>'
+html_conf += '</div>'
+st.markdown(html_conf, unsafe_allow_html=True)
+
+# 2. Botones de Control (Arriba para fácil acceso en móvil)
+st.markdown("### Controls")
+col_b1, col_b2, col_b3, col_b4, col_b5 = st.columns(5)
+with col_b1: st.button("Draw Pot 1", disabled=not st.session_state.botones["b1"], on_click=repartir_bombo1_click, use_container_width=True)
+with col_b2: st.button("Draw Pot 2", disabled=not st.session_state.botones["b2"], on_click=repartir_bombo2_click, use_container_width=True)
+with col_b3: st.button("Draw Pot 3", disabled=not st.session_state.botones["b3"], on_click=repartir_bombo3_click, use_container_width=True)
+with col_b4: st.button("Draw Pot 4", disabled=not st.session_state.botones["b4"], on_click=repartir_bombo4_click, use_container_width=True)
+with col_b5: st.button("🔄 Reset", on_click=limpiar_grupos_click, use_container_width=True)
+
+# 3. Grupos (Resultados - Centro de atención)
+st.markdown("---")
+st.subheader("📋 Groups")
+mostrar_grupos_coloreados()
+
+# 4. Compartir (Solo al final)
+if not st.session_state.bombo4 and not st.session_state.botones["b4"]:
+    guardar_simulacion_en_bd(st.session_state.grupos)
+    st.markdown("---")
+    st.markdown("## 📤 Share Results")
+    col_img, col_share = st.columns([1, 2])
+    with col_img:
+        img_bytes = generar_imagen_resumen()
+        st.image(img_bytes, use_container_width=True) # Preview en pantalla
+        st.download_button(label="📸 Download Image", data=img_bytes, file_name="wc2026_draw_results.png", mime="image/png", use_container_width=True)
+    with col_share:
+        share_text = "Don't miss this 2026 World Cup draw simulator!"
+        share_url = "https://wc26final.onrender.com"
+        wa_url = f"https://api.whatsapp.com/send?text={share_text} {share_url}"
+        tw_url = f"https://twitter.com/intent/tweet?text={share_text}&url={share_url}"
+        fb_url = f"https://www.facebook.com/sharer/sharer.php?u={share_url}"
+        c1, c2 , c3= st.columns(3)
+        with c1: st.markdown(f"""<a href="{wa_url}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer;">WhatsApp</button></a>""", unsafe_allow_html=True)
+        with c2: st.markdown(f"""<a href="{tw_url}" target="_blank"><button style="background-color:#000000; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer;">X (Twitter)</button></a>""", unsafe_allow_html=True)
+        with c3: st.markdown(f"""<a href="{fb_url}" target="_blank"><button style="background-color:#1877F2; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer; font-weight:bold;">Facebook</button></a>""", unsafe_allow_html=True)
+
+# 5. Bombos (Referencia - Abajo)
+st.markdown("---")
+st.subheader("🎟 Pots (Remaining)")
 col1, col2, col3, col4 = st.columns(4)
 with col1:
     st.markdown("**Pot 1**")
@@ -524,34 +545,3 @@ with col3:
 with col4:
     st.markdown("**Pot 4**")
     mostrar_bombo_objetos(st.session_state.bombo4)
-
-st.markdown("---")
-col_b1, col_b2, col_b3, col_b4, col_b5 = st.columns(5)
-with col_b1: st.button("Draw Pot 1", disabled=not st.session_state.botones["b1"], on_click=repartir_bombo1_click)
-with col_b2: st.button("Draw Pot 2", disabled=not st.session_state.botones["b2"], on_click=repartir_bombo2_click)
-with col_b3: st.button("Draw Pot 3", disabled=not st.session_state.botones["b3"], on_click=repartir_bombo3_click)
-with col_b4: st.button("Draw Pot 4", disabled=not st.session_state.botones["b4"], on_click=repartir_bombo4_click)
-with col_b5: st.button("🔄 Reset Draw", on_click=limpiar_grupos_click)
-
-st.markdown("---")
-st.subheader("📋 Groups")
-mostrar_grupos_coloreados()
-
-if not st.session_state.bombo4 and not st.session_state.botones["b4"]:
-    guardar_simulacion_en_bd(st.session_state.grupos)
-    st.markdown("---")
-    st.markdown("## 📤 Share Results")
-    col_img, col_share = st.columns([1, 2])
-    with col_img:
-        img_bytes = generar_imagen_resumen()
-        st.download_button(label="📸 Download Image", data=img_bytes, file_name="wc2026_draw_results.png", mime="image/png", use_container_width=True)
-    with col_share:
-        share_text = "Don't miss this 2026 World Cup draw simulator!"
-        share_url = "https://wc26final.onrender.com"
-        wa_url = f"https://api.whatsapp.com/send?text={share_text} {share_url}"
-        tw_url = f"https://twitter.com/intent/tweet?text={share_text}&url={share_url}"
-        fb_url = f"https://www.facebook.com/sharer/sharer.php?u={share_url}"
-        c1, c2 , c3= st.columns(3)
-        with c1: st.markdown(f"""<a href="{wa_url}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer;">Share on WhatsApp</button></a>""", unsafe_allow_html=True)
-        with c2: st.markdown(f"""<a href="{tw_url}" target="_blank"><button style="background-color:#1DA1F2; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer;">Share on X</button></a>""", unsafe_allow_html=True)
-        with c3: st.markdown(f"""<a href="{fb_url}" target="_blank"><button style="background-color:#1877F2; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer; font-weight:bold;">Share on Facebook</button></a>""", unsafe_allow_html=True)
