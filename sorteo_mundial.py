@@ -1,21 +1,23 @@
 import streamlit as st
 import random
+import copy  # <--- IMPORTANTE: Necesario para copiar el estado de los grupos
 
 st.set_page_config(page_title="Sorteo Mundial Interactivo", layout="wide")
 st.title("🌍 Simulador Interactivo de Sorteo Mundial con Bombos y Restricciones")
 
 # --- Colores por confederación ---
 conf_colors = {
-    "CONCACAF": "#FFD700",   # amarillo
-    "CONMEBOL": "#ADFF2F",   # verde
-    "UEFA": "#1E90FF",       # azul
-    "CAF": "#FF6347",        # rojo
-    "AFC": "#FF69B4",        # rosa
-    "OFC": "#9370DB",        # morado
-    "Variable": "#D3D3D3"    # gris
+    "CONCACAF": "#FFD700",
+    "CONMEBOL": "#ADFF2F",
+    "UEFA": "#1E90FF",
+    "CAF": "#FF6347",
+    "AFC": "#FF69B4",
+    "OFC": "#9370DB",
+    "Variable": "#D3D3D3"
 }
 
-# --- Bombos como listas de objetos (estado inicial) ---
+# --- Bombos ---
+# (Mantén tus listas de bombos bombo1, bombo2, bombo3, bombo4 exactamente como las tenías)
 bombo1 = [
     {"pais": "México", "confederacion": "CONCACAF"},
     {"pais": "Canadá", "confederacion": "CONCACAF"},
@@ -76,12 +78,13 @@ bombo4 = [
     {"pais": "UEFA4", "confederacion": "UEFA"}
 ]
 
-# --- Construir mapa inmutable país -> confederación (para referencia aunque los bombos se vacíen) ---
+
+# --- Mapa inmutable país -> confederación ---
 country_conf = {}
 for b in (bombo1 + bombo2 + bombo3 + bombo4):
     country_conf[b["pais"]] = b["confederacion"]
 
-# --- Mapa ISO alpha-2 para banderas (usado con FlagCDN). Ajusta si quieres otro código. ---
+# --- Mapa ISO alpha-2 ---
 iso_map = {
     "México":"mx","Canadá":"ca","USA":"us","España":"es","Argentina":"ar",
     "Francia":"fr","Inglaterra":"gb","Portugal":"pt","Holanda":"nl","Brasil":"br",
@@ -92,25 +95,22 @@ iso_map = {
     "Costa de Marfil":"ci","Túnez":"tn","Sudáfrica":"za","Qatar":"qa","Uzbekistán":"uz",
     "Arabia Saudí":"sa","Jordania":"jo","Curazao":"cw","Nueva Zelanda":"nz","Haití":"ht",
     "Ghana":"gh","Cabo Verde":"cv"
-    # ICP1, ICP2, UEFA1.. left out -> will show placeholder
 }
 
-# --- Función para obtener URL de la bandera (FlagCDN, 40px width) ---
 def flag_url_for(country):
     code = iso_map.get(country)
     if not code:
-        return ""  # placeholder (no url)
-    # FlagCDN provides PNGs at https://flagcdn.com/w40/{code}.png
+        return ""
     return f"https://flagcdn.com/w40/{code}.png"
 
 # --- Inicializamos sesión ---
 if "grupos" not in st.session_state:
-    st.session_state.grupos = {chr(65+i): [None]*4 for i in range(12)}  # A-L
+    st.session_state.grupos = {chr(65+i): [None]*4 for i in range(12)} # A-L
 
 if "botones" not in st.session_state:
     st.session_state.botones = {"b1": True, "b2": False, "b3": False, "b4": False}
 
-# --- Función mostrar bombos ---
+# --- Función mostrar bombos (IGUAL) ---
 def mostrar_bombo_objetos(bombo):
     for item in bombo:
         color = conf_colors.get(item["confederacion"], "#FFFFFF")
@@ -118,7 +118,7 @@ def mostrar_bombo_objetos(bombo):
         if bandera_url:
             img_html = f"<img src='{bandera_url}' width='24' style='margin-left:8px; vertical-align:middle'/>"
         else:
-            img_html = "&#10067;"  # question emoji (HTML entity)
+            img_html = "&#10067;"
         st.markdown(
             f"<div style='padding:8px; border-radius:8px; margin-bottom:4px; display:flex; align-items:center; justify-content:space-between'>"
             f"<div style='display:flex; align-items:center'><span style='display:inline-block; width:8px; height:24px; background-color:{color}; margin-right:8px; vertical-align:middle'></span>"
@@ -128,7 +128,7 @@ def mostrar_bombo_objetos(bombo):
             unsafe_allow_html=True
         )
 
-# --- Función mostrar grupos ---
+# --- Función mostrar grupos (IGUAL) ---
 def mostrar_grupos_coloreados():
     cols = st.columns(6)
     for i, letra in enumerate(st.session_state.grupos):
@@ -136,7 +136,6 @@ def mostrar_grupos_coloreados():
             html_table = "<table style='border-collapse:collapse; width:100%'>"
             for idx, pais in enumerate(st.session_state.grupos[letra]):
                 if pais:
-                    # la confederación la consultamos desde country_conf (inmutable)
                     conf = country_conf.get(pais)
                     color = conf_colors.get(conf, "#000000")
                     bandera_url = flag_url_for(pais)
@@ -144,7 +143,6 @@ def mostrar_grupos_coloreados():
                         bandera_html = f"<img src='{bandera_url}' width='24' style='margin-left:8px; vertical-align:middle'/>"
                     else:
                         bandera_html = "&#10067;"
-                    # fila con rayita izquierda + bandera al final
                     html_table += (
                         f"<tr>"
                         f"<td style='padding:6px; border-left:8px solid {color}; display:flex; justify-content:space-between; align-items:center'>"
@@ -158,71 +156,115 @@ def mostrar_grupos_coloreados():
             html_table += "</table>"
             st.markdown(f"<b>Grupo {letra}</b><br>{html_table}", unsafe_allow_html=True)
 
-# --- Funciones repartir bombos ---
+# --- LÓGICA DE REPARTO DEL BOMBO 1 (IGUAL) ---
 def repartir_bombo1_con_restricciones():
     global bombo1
     if not bombo1:
         return
     fijas = {"México": "A", "Canadá": "B", "USA": "D"}
+    # Asignar cabezas de serie fijas
     for pais, grupo in fijas.items():
         obj = next((x for x in bombo1 if x["pais"] == pais), None)
         if obj:
             st.session_state.grupos[grupo][0] = obj["pais"]
             bombo1.remove(obj)
+    
+    # Repartir el resto aleatoriamente
     paises_restantes = bombo1.copy()
     grupos_restantes = [l for l in st.session_state.grupos if l not in fijas.values()]
     random.shuffle(paises_restantes)
+    
     for i, letra in enumerate(grupos_restantes):
         if i < len(paises_restantes):
             st.session_state.grupos[letra][0] = paises_restantes[i]["pais"]
+            
     bombo1.clear()
     st.session_state.botones["b1"] = False
     st.session_state.botones["b2"] = True
 
+# --- LÓGICA CORREGIDA PARA BOMBOS 2, 3 Y 4 ---
 def repartir_bombo_con_restricciones(bombo, posicion, key, habilitar_siguiente=None):
     if not bombo:
         return
-    paises = bombo.copy()
-    random.shuffle(paises)
-    for pais_obj in paises:
-        asignado = False
-        intentos = list(st.session_state.grupos.keys())
-        random.shuffle(intentos)
-        for letra in intentos:
-            grupo = st.session_state.grupos[letra]
-            confs = []
-            # consultamos confs desde country_conf (no dependemos de bombos que se vacían)
-            for p in grupo:
-                if p:
-                    confs.append(country_conf.get(p))
-            uefa_count = confs.count("UEFA")
-            if pais_obj["confederacion"] == "UEFA" and uefa_count < 2 and grupo[posicion] is None:
-                st.session_state.grupos[letra][posicion] = pais_obj["pais"]
-                asignado = True
-                break
-            elif pais_obj["confederacion"] != "UEFA" and pais_obj["confederacion"] not in confs and grupo[posicion] is None:
-                st.session_state.grupos[letra][posicion] = pais_obj["pais"]
-                asignado = True
-                break
-        if not asignado:
-            for letra in st.session_state.grupos:
-                if st.session_state.grupos[letra][posicion] is None:
+
+    # Guardamos una copia "segura" del estado de los grupos ANTES de tocar nada en este bombo
+    estado_inicial_grupos = copy.deepcopy(st.session_state.grupos)
+    paises_a_repartir = bombo.copy()
+
+    # Bucle infinito hasta encontrar una solución válida
+    while True:
+        # 1. Restauramos el estado inicial (limpiamos intentos fallidos previos)
+        st.session_state.grupos = copy.deepcopy(estado_inicial_grupos)
+        
+        # 2. Mezclamos los países para intentar un orden nuevo
+        random.shuffle(paises_a_repartir)
+        
+        exito_bombo = True  # Asumimos que todo saldrá bien
+
+        for pais_obj in paises_a_repartir:
+            asignado = False
+            # Mezclamos los grupos para intentar asignación aleatoria
+            grupos_letras = list(st.session_state.grupos.keys())
+            random.shuffle(grupos_letras)
+
+            for letra in grupos_letras:
+                grupo = st.session_state.grupos[letra]
+                
+                # Si la posición ya tiene algo (error lógico), saltamos
+                if grupo[posicion] is not None:
+                    continue
+
+                # REVISAR CONFEDERACIONES EN EL GRUPO
+                confs_en_grupo = []
+                for p in grupo:
+                    if p:
+                        confs_en_grupo.append(country_conf.get(p))
+                
+                uefa_count = confs_en_grupo.count("UEFA")
+                mi_conf = pais_obj["confederacion"]
+
+                # --- APLICACIÓN ESTRICTA DE REGLAS ---
+                es_valido = False
+                
+                if mi_conf == "UEFA":
+                    # UEFA permite hasta 2
+                    if uefa_count < 2:
+                        es_valido = True
+                else:
+                    # Resto solo permite 1
+                    if mi_conf not in confs_en_grupo:
+                        es_valido = True
+                
+                # Si cumple reglas, asignamos
+                if es_valido:
                     st.session_state.grupos[letra][posicion] = pais_obj["pais"]
-                    break
+                    asignado = True
+                    break # Pasamos al siguiente país
+            
+            # Si salimos del bucle de grupos y NO se asignó el país:
+            if not asignado:
+                exito_bombo = False
+                break # Rompemos el bucle de países y volvemos a empezar el while principal
+
+        # Si logramos asignar todos los países del bombo sin errores, terminamos
+        if exito_bombo:
+            break 
+    
+    # Finalización
     bombo.clear()
     st.session_state.botones[key] = False
     if habilitar_siguiente:
         st.session_state.botones[habilitar_siguiente] = True
 
 # --- Limpiar ---
-def limpiar_grupos():
+def limpiar_grupos_click():
     for letra in st.session_state.grupos:
         st.session_state.grupos[letra] = [None] * 4
     st.session_state.botones = {"b1": True, "b2": False, "b3": False, "b4": False}
-    # Re-populate bombos? No — si quieres que limpiar también restaure bombos originales,
-    # deberíamos mantener copias iniciales y reasignarlas aquí. Actualmente "Limpiar" solo limpia grupos y botones.
+    # Nota: Esto no restaura los bombos visualmente si ya se borraron de la lista global, 
+    # en una app real deberías usar session_state para los bombos también.
 
-# --- Botones con on_click ---
+# --- Botones callbacks ---
 def repartir_bombo1_click():
     repartir_bombo1_con_restricciones()
 
@@ -235,10 +277,7 @@ def repartir_bombo3_click():
 def repartir_bombo4_click():
     repartir_bombo_con_restricciones(bombo4, 3, "b4")
 
-def limpiar_grupos_click():
-    limpiar_grupos()
-
-# --- Mostrar guía de colores ---
+# --- UI Layout ---
 st.subheader("🎨 Guía de confederaciones")
 cols_conf = st.columns(len(conf_colors))
 for i, conf in enumerate(conf_colors):
@@ -250,7 +289,6 @@ for i, conf in enumerate(conf_colors):
             unsafe_allow_html=True
         )
 
-# --- Mostrar Bombos ---
 st.subheader("🎟 Bombos")
 col1, col2, col3, col4 = st.columns(4)
 with col1:
@@ -266,7 +304,6 @@ with col4:
     st.markdown("**Bombo 4**")
     mostrar_bombo_objetos(bombo4)
 
-# --- Botones ---
 st.markdown("---")
 col_b1, col_b2, col_b3, col_b4, col_b5 = st.columns(5)
 with col_b1:
@@ -280,7 +317,6 @@ with col_b4:
 with col_b5:
     st.button("Limpiar Grupos", on_click=limpiar_grupos_click)
 
-# --- Mostrar Grupos ---
 st.markdown("---")
 st.subheader("📋 Grupos actuales")
 mostrar_grupos_coloreados()
