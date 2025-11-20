@@ -3,6 +3,7 @@ import random
 import copy
 import io
 from PIL import Image, ImageDraw, ImageFont
+import requests # <--- Nueva importación
 
 # --- Configuración de la página ---
 st.set_page_config(page_title="Simulador Sorteo WC2026", layout="wide")
@@ -102,10 +103,27 @@ iso_map = {
     "Ghana":"gh","Cabo Verde":"cv"
 }
 
-def flag_url_for(country):
-    code = iso_map.get(country)
-    if not code: return ""
-    return f"https://flagcdn.com/w40/{code}.png"
+# --- Cache para banderas (descarga una vez) ---
+flag_cache = {}
+
+def get_flag_image(country_code, size=(20, 15)): # Tamaño optimizado para la imagen de resumen
+    if country_code not in flag_cache:
+        url = f"https://flagcdn.com/w40/{country_code}.png" # Usamos la versión de 40px para mejor calidad
+        try:
+            response = requests.get(url, timeout=5)
+            response.raise_for_status() # Lanza una excepción para errores HTTP
+            img_data = response.content
+            flag_img = Image.open(io.BytesIO(img_data)).convert("RGBA") # Convertir a RGBA para transparencia
+            flag_img = flag_img.resize(size, Image.LANCZOS) # Redimensionar con filtro de alta calidad
+            flag_cache[country_code] = flag_img
+        except requests.exceptions.RequestException as e:
+            st.warning(f"No se pudo cargar la bandera de {country_code}: {e}")
+            flag_cache[country_code] = None # Guardar None para no intentar de nuevo
+        except Exception as e:
+            st.warning(f"Error procesando la bandera de {country_code}: {e}")
+            flag_cache[country_code] = None
+    return flag_cache[country_code]
+
 
 # --- INICIALIZAR SESIÓN (ESTADO) ---
 if "grupos" not in st.session_state:
@@ -167,19 +185,32 @@ def mostrar_grupos_coloreados():
 
 # --- GENERACIÓN DE IMAGEN (PILLOW) ---
 def generar_imagen_resumen():
-    # Lienzo
     W, H = 1200, 800
     bg_color = (240, 242, 246) 
     img = Image.new('RGB', (W, H), color=bg_color)
     d = ImageDraw.Draw(img)
     
+    # Intentar cargar una fuente, si no usar default.
     try:
-        font_title = ImageFont.load_default() 
-    except:
-        pass
+        # Rutas comunes para Arial en Windows/Mac. En Linux/Streamlit Cloud puede variar.
+        # Si no la encuentra, load_default() es el fallback.
+        try: # Windows
+            font_title = ImageFont.truetype("arial.ttf", 28) 
+            font_group = ImageFont.truetype("arial.ttf", 20)
+            font_country = ImageFont.truetype("arial.ttf", 16)
+        except IOError: # Mac/Linux o Streamlit Cloud si no está en PATH
+            font_title = ImageFont.truetype("Arial.ttf", 28) # A veces es Arial.ttf
+            font_group = ImageFont.truetype("Arial.ttf", 20)
+            font_country = ImageFont.truetype("Arial.ttf", 16)
+    except IOError:
+        font_title = ImageFont.load_default()
+        font_group = ImageFont.load_default()
+        font_country = ImageFont.load_default()
+        st.warning("No se encontró una fuente 'Arial'. Usando fuente por defecto. La imagen podría verse diferente.")
 
     # Título
-    d.text((W/2 - 80, 20), "RESULTADOS SORTEO MUNDIAL", fill=(0,0,0))
+    text_w, text_h = d.textsize("RESULTADOS SORTEO MUNDIAL", font=font_title)
+    d.text(((W - text_w) / 2, 20), "RESULTADOS SORTEO MUNDIAL", fill=(0,0,0), font=font_title)
 
     # Grilla
     margen_x = 20
@@ -197,25 +228,32 @@ def generar_imagen_resumen():
         
         # Caja Grupo
         d.rectangle([x, y, x + ancho_grupo - 10, y + alto_grupo - 10], fill="white", outline="#ccc", width=1)
-        d.text((x + 10, y + 10), f"GRUPO {letra}", fill="black")
-        d.line([x+10, y+25, x + ancho_grupo - 20, y+25], fill="#ddd", width=1)
+        d.text((x + 10, y + 10), f"GRUPO {letra}", fill="black", font=font_group)
+        d.line([x+10, y+35, x + ancho_grupo - 20, y+35], fill="#ddd", width=1)
         
         # Países
         paises = st.session_state.grupos[letra]
         for idx, pais in enumerate(paises):
-            y_pais = y + 40 + (idx * 30)
+            y_pais = y + 50 + (idx * 35) # Ajustar la separación vertical para la bandera
             if pais:
                 conf = country_conf.get(pais, "Variable")
                 hex_color = conf_colors.get(conf, "#000000")
                 
-                try:
-                    d.rectangle([x + 10, y_pais, x + 15, y_pais + 20], fill=hex_color)
-                except:
-                    d.rectangle([x + 10, y_pais, x + 15, y_pais + 20], fill="gray")
+                d.rectangle([x + 10, y_pais, x + 15, y_pais + 20], fill=hex_color)
                 
-                d.text((x + 25, y_pais + 2), pais, fill="black")
+                # --- LÓGICA PARA BANDERAS EN LA IMAGEN ---
+                country_code = iso_map.get(pais)
+                if country_code:
+                    flag_img = get_flag_image(country_code)
+                    if flag_img:
+                        img.paste(flag_img, (int(x + 25), int(y_pais + 2)), flag_img) # Pegar bandera
+                        d.text((x + 25 + flag_img.width + 5, y_pais + 2), pais, fill="black", font=font_country) # Texto después de bandera
+                    else: # Si bandera no se pudo cargar
+                        d.text((x + 25, y_pais + 2), pais, fill="black", font=font_country)
+                else: # Si no hay código ISO para el país
+                    d.text((x + 25, y_pais + 2), pais, fill="black", font=font_country)
             else:
-                d.text((x + 25, y_pais + 2), "---", fill="gray")
+                d.text((x + 25, y_pais + 2), "---", fill="gray", font=font_country)
 
     buf = io.BytesIO()
     img.save(buf, format="PNG")
@@ -436,35 +474,3 @@ mostrar_grupos_coloreados()
 if not st.session_state.bombo4 and not st.session_state.botones["b4"]:
     st.markdown("---")
     st.markdown("## 📤 Compartir Resultados")
-    
-    col_img, col_share = st.columns([1, 2])
-    
-    with col_img:
-        img_bytes = generar_imagen_resumen()
-        st.download_button(
-            label="📸 Descargar Imagen del Sorteo",
-            data=img_bytes,
-            file_name="sorteo_mundial_2026.png",
-            mime="image/png",
-            use_container_width=True
-        )
-        
-    with col_share:
-        st.info("1. Descarga la imagen a la izquierda. \n2. Selecciona tu red social abajo y adjunta la imagen descargada.")
-        
-        share_text = "¡He simulado el sorteo del Mundial 2026! Mira mis grupos:"
-        share_url = "https://tu-app-streamlit.com"
-        wa_url = f"https://api.whatsapp.com/send?text={share_text} {share_url}"
-        tw_url = f"https://twitter.com/intent/tweet?text={share_text}&url={share_url}"
-        
-        c1, c2 = st.columns(2)
-        with c1:
-            st.markdown(f"""<a href="{wa_url}" target="_blank">
-                <button style="background-color:#25D366; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer;">
-                    Compartir en WhatsApp
-                </button></a>""", unsafe_allow_html=True)
-        with c2:
-            st.markdown(f"""<a href="{tw_url}" target="_blank">
-                <button style="background-color:#1DA1F2; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer;">
-                    Compartir en X
-                </button></a>""", unsafe_allow_html=True)
