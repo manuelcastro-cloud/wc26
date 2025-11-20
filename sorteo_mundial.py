@@ -7,6 +7,7 @@ from PIL import Image, ImageDraw, ImageFont
 from supabase import create_client
 
 # --- SUPABASE ---
+# (Configura tus credenciales reales)
 SUPABASE_URL = "https://gohsdckibmscvvfcxszw.supabase.co"
 SUPABASE_KEY = "sb_publishable_q_7GWwouWZKDrNWsE9MSXQ_qQxlRdNX"
 try:
@@ -26,10 +27,11 @@ def guardar_simulacion_en_bd(grupos):
 # --- Configuración de la página ---
 st.set_page_config(page_title="WC2026 Draw Simulator", layout="wide")
 
-# --- CSS RESPONSIVE (AJUSTADO) ---
+# --- CSS RESPONSIVE (GRID SYSTEM) ---
+# Este bloque define cómo se ven los bombos (2 columnas en PC, 1 en Móvil)
 st.markdown("""
 <style>
-    /* Estilos generales */
+    /* Estilos de la guía de colores */
     .conf-guide {
         display: flex;
         flex-wrap: wrap;
@@ -60,7 +62,7 @@ st.markdown("""
     /* --- GRID DE BOMBOS (POTS) --- */
     .pots-grid {
         display: grid;
-        /* ESCRITORIO: 2 Columnas */
+        /* ESCRITORIO: 2 Columnas (2 arriba, 2 abajo) */
         grid-template-columns: repeat(2, 1fr); 
         gap: 15px;
         margin-top: 10px;
@@ -68,28 +70,31 @@ st.markdown("""
     
     .pot-card {
         background-color: white;
-        padding: 10px;
-        border-radius: 8px;
+        padding: 15px;
+        border-radius: 10px;
         border: 1px solid #e0e0e0;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     
     .pot-title {
         font-weight: bold;
+        font-size: 16px;
         text-align: center;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
         border-bottom: 2px solid #f0f2f6;
         padding-bottom: 5px;
+        color: #333;
     }
 
     .country-item {
         display: flex;
         align-items: center;
-        font-size: 13px;
-        margin-bottom: 4px;
+        font-size: 14px;
+        margin-bottom: 6px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        padding: 2px 0;
     }
 
     /* --- RESPONSIVE MÓVIL --- */
@@ -99,7 +104,7 @@ st.markdown("""
         
         /* MÓVIL: 1 Columna (Uno debajo del otro) */
         .pots-grid {
-            grid-template-columns: repeat(1, 1fr); 
+            grid-template-columns: 1fr; 
         }
     }
 </style>
@@ -119,7 +124,7 @@ conf_colors = {
     "Variable2": "#A9A9A9" 
 }
 
-# --- DATOS MAESTROS (CONSTANTES) - EN INGLÉS ---
+# --- DATOS MAESTROS ---
 DATA_BOMBO_1 = [
     {"pais": "Mexico", "confederacion": "CONCACAF"},
     {"pais": "Canada", "confederacion": "CONCACAF"},
@@ -192,34 +197,29 @@ iso_map = {
     "Ivory Coast":"ci","Tunisia":"tn","South Africa":"za","Qatar":"qa","Uzbekistan":"uz",
     "Saudi Arabia":"sa","Jordan":"jo","Curacao":"cw","New Zealand":"nz","Haiti":"ht",
     "Ghana":"gh","Cape Verde":"cv",
-    # Paths Europeos (Bandera Europa)
+    # Paths Europeos -> Bandera Europa
     "Italy Path": "eu",
     "Ukraine Path": "eu",
     "Turkey Path": "eu",
     "Denmark Path": "eu",
-    # Paths Intercontinentales (Icono Planeta - Código especial)
+    # Paths Intercontinentales -> Icono Planeta
     "DR Congo Path": "PLANET",
     "Iraq Path": "PLANET"
 }
 
-# --- FUNCIONES DE IMÁGENES Y BANDERAS ---
+# --- FUNCIONES DE IMÁGENES ---
 PLANET_ICON_URL = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f30d.png"
 
 def flag_url_for(country):
     code = iso_map.get(country)
     if not code: return ""
-    if code == "PLANET":
-        return PLANET_ICON_URL
+    if code == "PLANET": return PLANET_ICON_URL
     return f"https://flagcdn.com/w40/{code}.png"
 
 flag_cache = {}
 def get_flag_image(country_code, size=(20, 15)):
     if country_code not in flag_cache:
-        if country_code == "PLANET":
-            url = PLANET_ICON_URL
-        else:
-            url = f"https://flagcdn.com/w40/{country_code}.png"
-            
+        url = PLANET_ICON_URL if country_code == "PLANET" else f"https://flagcdn.com/w40/{country_code}.png"
         try:
             response = requests.get(url, timeout=5)
             response.raise_for_status()
@@ -227,7 +227,7 @@ def get_flag_image(country_code, size=(20, 15)):
             flag_img = Image.open(io.BytesIO(img_data)).convert("RGBA")
             flag_img = flag_img.resize(size, Image.LANCZOS)
             flag_cache[country_code] = flag_img
-        except Exception as e:
+        except Exception:
             flag_cache[country_code] = None
     return flag_cache[country_code]
 
@@ -243,7 +243,31 @@ if "bombo2" not in st.session_state: st.session_state.bombo2 = copy.deepcopy(DAT
 if "bombo3" not in st.session_state: st.session_state.bombo3 = copy.deepcopy(DATA_BOMBO_3)
 if "bombo4" not in st.session_state: st.session_state.bombo4 = copy.deepcopy(DATA_BOMBO_4)
 
-# --- UI: MOSTRAR GRUPOS (CORREGIDO RESPONSIVE) ---
+
+# --- FUNCIÓN GENERAR HTML DE BOMBO (Corregida para visualización) ---
+def generar_html_bombo(nombre_bombo, lista_paises):
+    # Construye el HTML de una tarjeta de bombo
+    html = f"<div class='pot-card'><div class='pot-title'>{nombre_bombo}</div>"
+    
+    if not lista_paises:
+        html += "<div style='text-align:center; color:#ccc; font-size:13px; padding:10px;'><i>Empty / Drawn</i></div>"
+    else:
+        for item in lista_paises:
+            color = conf_colors.get(item["confederacion"], "#FFFFFF")
+            bandera_url = flag_url_for(item["pais"])
+            img_tag = f"<img src='{bandera_url}' width='16' style='margin-left:auto;'/>" if bandera_url else ""
+            
+            html += f"""
+            <div class='country-item'>
+                <span style='display:inline-block; width:6px; height:12px; background-color:{color}; margin-right:8px; border-radius:2px;'></span>
+                <span style='flex:1; overflow:hidden; text-overflow:ellipsis;'>{item['pais']}</span>
+                {img_tag}
+            </div>
+            """
+    html += "</div>"
+    return html
+
+# --- UI: MOSTRAR GRUPOS ---
 def renderizar_tabla_grupo(letra):
     html_table = "<table style='border-collapse:collapse; width:100%; margin-bottom:10px;'>"
     for idx, pais in enumerate(st.session_state.grupos[letra]):
@@ -255,31 +279,35 @@ def renderizar_tabla_grupo(letra):
             
             html_table += (
                 f"<tr>"
-                f"<td style='padding:4px; border-left:6px solid {color}; font-size:13px; display:flex; justify-content:space-between; align-items:center'>"
-                f"<div style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{pais}</div>"
+                f"<td style='padding:5px; border-left:6px solid {color}; font-size:14px; display:flex; justify-content:space-between; align-items:center; background-color:white; margin-bottom:2px; border-radius:0 4px 4px 0;'>"
+                f"<div style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500;'>{pais}</div>"
                 f"<div>{bandera_html}</div>"
                 f"</td>"
                 f"</tr>"
             )
         else:
-            html_table += "<tr><td style='padding:4px; color:#ccc; font-size:13px;'>---</td></tr>"
+            html_table += "<tr><td style='padding:5px; color:#ccc; font-size:13px; border-left:6px solid #eee;'>---</td></tr>"
     html_table += "</table>"
-    st.markdown(f"<div style='text-align:center; font-weight:bold; margin-bottom:2px;'>Group {letra}</div>{html_table}", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align:center; font-weight:bold; margin-bottom:5px; color:#444;'>Group {letra}</div>{html_table}", unsafe_allow_html=True)
 
 def mostrar_grupos_coloreados():
     grupos_keys = list(st.session_state.grupos.keys())
+    
+    # FILA 1: A-F
     cols1 = st.columns(6)
     for i in range(6):
         letra = grupos_keys[i]
         with cols1[i]:
             renderizar_tabla_grupo(letra)
+            
+    # FILA 2: G-L
     cols2 = st.columns(6)
     for i in range(6):
         letra = grupos_keys[i+6]
         with cols2[i]:
             renderizar_tabla_grupo(letra)
 
-# --- PILLOW ---
+# --- PILLOW (IMAGEN DE DESCARGA) ---
 def generar_imagen_resumen():
     W, H = 1200, 800
     bg_color = (240, 242, 246) 
@@ -340,7 +368,7 @@ def generar_imagen_resumen():
     img.save(buf, format="PNG")
     return buf.getvalue()
 
-# --- LÓGICA ---
+# --- LÓGICA DE SORTEO ---
 def repartir_bombo1_con_restricciones():
     bombo = st.session_state.bombo1
     if not bombo: return
@@ -565,29 +593,11 @@ if not st.session_state.bombo4 and not st.session_state.botones["b4"]:
         with c2: st.markdown(f"""<a href="{tw_url}" target="_blank"><button style="background-color:#000000; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer;">X (Twitter)</button></a>""", unsafe_allow_html=True)
         with c3: st.markdown(f"""<a href="{fb_url}" target="_blank"><button style="background-color:#1877F2; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer; font-weight:bold;">Facebook</button></a>""", unsafe_allow_html=True)
 
-# 5. Bombos restantes (HTML Grid Responsive)
+# 5. Bombos restantes (HTML GRID)
 st.markdown("---")
 st.subheader("🎟 Pots (Remaining)")
 
-def generar_html_bombo(nombre_bombo, lista_paises):
-    html = f"<div class='pot-card'><div class='pot-title'>{nombre_bombo}</div>"
-    if not lista_paises:
-        html += "<div style='text-align:center; color:#ccc; font-size:12px;'><i>Empty / Drawn</i></div>"
-    else:
-        for item in lista_paises:
-            color = conf_colors.get(item["confederacion"], "#FFFFFF")
-            bandera_url = flag_url_for(item["pais"])
-            img_tag = f"<img src='{bandera_url}' width='14' style='margin-left:auto;'/>" if bandera_url else ""
-            html += f"""
-            <div class='country-item'>
-                <span style='display:inline-block; width:6px; height:12px; background-color:{color}; margin-right:6px; flex-shrink:0;'></span>
-                <span style='text-overflow:ellipsis; overflow:hidden;'>{item['pais']}</span>
-                {img_tag}
-            </div>
-            """
-    html += "</div>"
-    return html
-
+# Construcción del grid de bombos
 html_pots = "<div class='pots-grid'>"
 html_pots += generar_html_bombo("**Pot 1**", st.session_state.bombo1)
 html_pots += generar_html_bombo("**Pot 2**", st.session_state.bombo2)
@@ -595,4 +605,5 @@ html_pots += generar_html_bombo("**Pot 3**", st.session_state.bombo3)
 html_pots += generar_html_bombo("**Pot 4**", st.session_state.bombo4)
 html_pots += "</div>"
 
+# Renderizado final con unsafe_allow_html=True
 st.markdown(html_pots, unsafe_allow_html=True)
