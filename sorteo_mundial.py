@@ -2,8 +2,8 @@ import streamlit as st
 import random
 import copy
 
-st.set_page_config(page_title="Simulador Sorteo Mundial", layout="wide")
-st.title("🌍 Simulador Sorteo Mundial")
+st.set_page_config(page_title="Simulador Sorteo WC2026", layout="wide")
+st.title("🌍 Simulador Sorteo WC2026")
 
 # --- Colores por confederación ---
 conf_colors = {
