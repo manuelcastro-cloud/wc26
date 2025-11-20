@@ -7,8 +7,8 @@ from PIL import Image, ImageDraw, ImageFont
 from supabase import create_client
 
 # --- SUPABASE ---
-SUPABASE_URL = "https://xxxxx.supabase.co"
-SUPABASE_KEY = "tu_api_key"
+SUPABASE_URL = "https://gohsdckibmscvvfcxszw.supabase.co"
+SUPABASE_KEY = "sb_publishable_q_7GWwouWZKDrNWsE9MSXQ_qQxlRdNX"
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def guardar_simulacion_en_bd(grupos):
