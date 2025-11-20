@@ -424,6 +424,8 @@ if not st.session_state.bombo4 and not st.session_state.botones["b4"]:
         share_url = "https://wc2026.streamlit.app"
         wa_url = f"https://api.whatsapp.com/send?text={share_text} {share_url}"
         tw_url = f"https://twitter.com/intent/tweet?text={share_text}&url={share_url}"
-        c1, c2 = st.columns(2)
+        fb_url = f"https://www.facebook.com/sharer/sharer.php?u={share_url}"
+        c1, c2 , c3= st.columns(3)
         with c1: st.markdown(f"""<a href="{wa_url}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer;">Share on WhatsApp</button></a>""", unsafe_allow_html=True)
         with c2: st.markdown(f"""<a href="{tw_url}" target="_blank"><button style="background-color:#1DA1F2; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer;">Share on X</button></a>""", unsafe_allow_html=True)
+        with c3: st.markdown(f"""<a href="{fb_url}" target="_blank"><button style="background-color:#1877F2; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer; font-weight:bold;">Facebook</button></a>""", unsafe_allow_html=True)
