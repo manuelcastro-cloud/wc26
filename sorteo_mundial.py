@@ -337,6 +337,7 @@ def repartir_bombo4_especial():
     bombo_list = st.session_state.bombo4
     if not bombo_list: return
     
+    # Restricciones compuestas
     restricciones_icp1 = ["CAF", "CONCACAF", "OFC"]
     restricciones_icp2 = ["AFC", "CONCACAF", "CONMEBOL"]
     
@@ -344,43 +345,69 @@ def repartir_bombo4_especial():
     paises_a_repartir = bombo_list.copy()
     posicion = 3 
     
-    while True:
-        st.session_state.grupos = copy.deepcopy(estado_inicial)
-        random.shuffle(paises_a_repartir)
-        exito_bombo = True
-        for pais_obj in paises_a_repartir:
-            asignado = False
-            letras = list(st.session_state.grupos.keys())
-            random.shuffle(letras)
-            for letra in letras:
-                grupo = st.session_state.grupos[letra]
-                if grupo[posicion] is not None: continue
+    # --- CORRECCIÓN: Límite de intentos para evitar congelamiento ---
+    max_intentos = 5000 
+    intentos = 0
+    
+    # Usamos un spinner para que el usuario sepa que está pensando
+    with st.spinner('Calculando probabilidades del sorteo...'):
+        while intentos < max_intentos:
+            intentos += 1
+            
+            st.session_state.grupos = copy.deepcopy(estado_inicial)
+            random.shuffle(paises_a_repartir)
+            exito_bombo = True
+            
+            for pais_obj in paises_a_repartir:
+                asignado = False
+                letras = list(st.session_state.grupos.keys())
+                random.shuffle(letras)
                 
-                confs_grupo = [country_conf.get(p) for p in grupo if p]
-                uefa_count = confs_grupo.count("UEFA")
-                mi_conf = pais_obj["confederacion"]
+                for letra in letras:
+                    grupo = st.session_state.grupos[letra]
+                    if grupo[posicion] is not None: continue
+                    
+                    confs_grupo = [country_conf.get(p) for p in grupo if p]
+                    uefa_count = confs_grupo.count("UEFA")
+                    mi_conf = pais_obj["confederacion"]
+                    
+                    es_valido = False
+                    
+                    if mi_conf == "Variable1": # ICP1
+                        if not any(c in confs_grupo for c in restricciones_icp1):
+                            es_valido = True
+                            
+                    elif mi_conf == "Variable2": # ICP2
+                        if not any(c in confs_grupo for c in restricciones_icp2):
+                            es_valido = True
+                            
+                    elif mi_conf == "UEFA":
+                        if uefa_count < 2: es_valido = True
+                            
+                    else: # Resto normal
+                        if mi_conf not in confs_grupo: es_valido = True
+                    
+                    if es_valido:
+                        st.session_state.grupos[letra][posicion] = pais_obj["pais"]
+                        asignado = True
+                        break
                 
-                es_valido = False
-                if mi_conf == "Variable1":
-                    if not any(c in confs_grupo for c in restricciones_icp1): es_valido = True
-                elif mi_conf == "Variable2":
-                    if not any(c in confs_grupo for c in restricciones_icp2): es_valido = True
-                elif mi_conf == "UEFA":
-                    if uefa_count < 2: es_valido = True
-                else:
-                    if mi_conf not in confs_grupo: es_valido = True
-                
-                if es_valido:
-                    st.session_state.grupos[letra][posicion] = pais_obj["pais"]
-                    asignado = True
+                if not asignado:
+                    exito_bombo = False
                     break
-            if not asignado:
-                exito_bombo = False
-                break
-        if exito_bombo: break
+            
+            if exito_bombo: break
 
-    bombo_list.clear()
-    st.session_state.botones["b4"] = False
+    # --- VERIFICACIÓN FINAL ---
+    if intentos >= max_intentos:
+        st.error("⚠️ Ocurrio un error intenta de nuevo.")
+        # Restauramos el estado inicial para que no queden grupos a medias
+        st.session_state.grupos = copy.deepcopy(estado_inicial)
+    else:
+        # Solo si tuvo éxito, limpiamos y avanzamos
+        bombo_list.clear()
+        st.session_state.botones["b4"] = False
+        st.success(f"¡Sorteo completado en {intentos} iteraciones!")
 
 # --- CALLBACKS ---
 def repartir_bombo1_click(): repartir_bombo1_con_restricciones()
