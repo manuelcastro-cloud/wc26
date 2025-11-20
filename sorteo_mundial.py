@@ -420,9 +420,8 @@ if not st.session_state.bombo4 and not st.session_state.botones["b4"]:
         img_bytes = generar_imagen_resumen()
         st.download_button(label="📸 Download Image", data=img_bytes, file_name="wc2026_draw_results.png", mime="image/png", use_container_width=True)
     with col_share:
-        st.info("1. Download the image on the left. \n2. Select your social network below and attach the downloaded image.")
-        share_text = "Check out my simulated World Cup 2026 Draw results!"
-        share_url = "https://tu-app-streamlit.com"
+        share_text = "Don't miss this 2026 World Cup draw simulator!"
+        share_url = "https://wc2026.streamlit.app"
         wa_url = f"https://api.whatsapp.com/send?text={share_text} {share_url}"
         tw_url = f"https://twitter.com/intent/tweet?text={share_text}&url={share_url}"
         c1, c2 = st.columns(2)
