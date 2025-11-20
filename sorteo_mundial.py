@@ -7,37 +7,39 @@ from PIL import Image, ImageDraw, ImageFont
 from supabase import create_client
 
 # --- SUPABASE ---
+# (Asegúrate de configurar tus credenciales reales aquí o en st.secrets)
 SUPABASE_URL = "https://gohsdckibmscvvfcxszw.supabase.co"
 SUPABASE_KEY = "sb_publishable_q_7GWwouWZKDrNWsE9MSXQ_qQxlRdNX"
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+try:
+    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+except:
+    supabase = None
 
 def guardar_simulacion_en_bd(grupos):
+    if not supabase: return
     try:
         payload = { "datos": grupos }
         supabase.table("simulaciones").insert(payload).execute()
-        st.toast("Simulation saved! ✔️") # Usamos toast para que sea menos intrusivo
+        st.toast("Simulation saved! ✔️")
     except Exception as e:
         pass
 
 # --- Configuración de la página ---
 st.set_page_config(page_title="WC2026 Draw Simulator", layout="wide")
 
-# --- INYECCIÓN DE CSS (ESTILOS RESPONSIVE) ---
+# --- CSS RESPONSIVE ---
 st.markdown("""
 <style>
-    /* Contenedor flexible para las confederaciones */
     .conf-guide {
         display: flex;
-        flex-wrap: wrap; /* Permite que bajen a la siguiente linea si no caben */
+        flex-wrap: wrap;
         gap: 10px;
-        justify-content: center; /* Centrado */
+        justify-content: center;
         margin-bottom: 20px;
         padding: 10px;
         background-color: #f0f2f6;
         border-radius: 10px;
     }
-    
-    /* Items individuales de la guía */
     .conf-item {
         display: flex;
         align-items: center;
@@ -48,19 +50,15 @@ st.markdown("""
         border-radius: 5px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
-
-    /* Cuadrito de color */
     .conf-color-box {
         width: 15px;
         height: 15px;
         margin-right: 8px;
         border-radius: 3px;
     }
-
-    /* Ajustes para móviles en títulos */
     @media (max-width: 768px) {
         h1 { font-size: 1.8rem !important; text-align: center; }
-        .stButton button { width: 100%; } /* Botones full width en móvil */
+        .stButton button { width: 100%; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -94,9 +92,8 @@ DATA_BOMBO_1 = [
     {"pais": "Belgium", "confederacion": "UEFA"},
     {"pais": "Germany", "confederacion": "UEFA"}
 ]
-
 DATA_BOMBO_2 = [
-    {"pais": "Croacia", "confederacion": "UEFA"},
+    {"pais": "Croatia", "confederacion": "UEFA"},
     {"pais": "Morocco", "confederacion": "CAF"},
     {"pais": "Colombia", "confederacion": "CONMEBOL"},
     {"pais": "Uruguay", "confederacion": "CONMEBOL"},
@@ -109,7 +106,6 @@ DATA_BOMBO_2 = [
     {"pais": "Ecuador", "confederacion": "CONMEBOL"},
     {"pais": "Australia", "confederacion": "AFC"}
 ]
-
 DATA_BOMBO_3 = [
     {"pais": "Norway", "confederacion": "UEFA"},
     {"pais": "Panama", "confederacion": "CONCACAF"},
@@ -124,7 +120,6 @@ DATA_BOMBO_3 = [
     {"pais": "Uzbekistan", "confederacion": "AFC"},
     {"pais": "Saudi Arabia", "confederacion": "AFC"}
 ]
-
 DATA_BOMBO_4 = [
     {"pais": "Jordan", "confederacion": "AFC"},
     {"pais": "Curacao", "confederacion": "CONCACAF"},
@@ -132,15 +127,15 @@ DATA_BOMBO_4 = [
     {"pais": "Haiti", "confederacion": "CONCACAF"},
     {"pais": "Ghana", "confederacion": "CAF"},
     {"pais": "Cape Verde", "confederacion": "CAF"},
-    {"pais": "ICP1", "confederacion": "Variable1"},
-    {"pais": "ICP2", "confederacion": "Variable2"},
-    {"pais": "UEFA1", "confederacion": "UEFA"},
-    {"pais": "UEFA2", "confederacion": "UEFA"},
-    {"pais": "UEFA3", "confederacion": "UEFA"},
-    {"pais": "UEFA4", "confederacion": "UEFA"}
+    {"pais": "DR Congo Path", "confederacion": "Variable1"}, # ICP1 (RD Congo)
+    {"pais": "Iraq Path", "confederacion": "Variable2"},     # ICP2 (Irak)
+    {"pais": "Italy Path", "confederacion": "UEFA"},         # UEFA1
+    {"pais": "Ukraine Path", "confederacion": "UEFA"},       # UEFA2
+    {"pais": "Turkey Path", "confederacion": "UEFA"},        # UEFA3
+    {"pais": "Denmark Path", "confederacion": "UEFA"}        # UEFA4
 ]
 
-# --- MAPAS DE REFERENCIA ---
+# --- MAPAS ---
 country_conf = {}
 for b in (DATA_BOMBO_1 + DATA_BOMBO_2 + DATA_BOMBO_3 + DATA_BOMBO_4):
     country_conf[b["pais"]] = b["confederacion"]
@@ -148,16 +143,23 @@ for b in (DATA_BOMBO_1 + DATA_BOMBO_2 + DATA_BOMBO_3 + DATA_BOMBO_4):
 iso_map = {
     "Mexico":"mx","Canada":"ca","USA":"us","Spain":"es","Argentina":"ar",
     "France":"fr","England":"gb","Portugal":"pt","Netherlands":"nl","Brazil":"br",
-    "Belgium":"be","Germany":"de","Croacia":"hr","Morocco":"ma","Colombia":"co",
+    "Belgium":"be","Germany":"de","Croatia":"hr","Morocco":"ma","Colombia":"co",
     "Uruguay":"uy","Switzerland":"ch","Senegal":"sn","Japan":"jp","Iran":"ir",
     "South Korea":"kr","Austria":"at","Ecuador":"ec","Australia":"au","Norway":"no",
     "Panama":"pa","Egypt":"eg","Algeria":"dz","Scotland":"gb","Paraguay":"py",
     "Ivory Coast":"ci","Tunisia":"tn","South Africa":"za","Qatar":"qa","Uzbekistan":"uz",
     "Saudi Arabia":"sa","Jordan":"jo","Curacao":"cw","New Zealand":"nz","Haiti":"ht",
-    "Ghana":"gh","Cape Verde":"cv"
+    "Ghana":"gh","Cape Verde":"cv",
+    # Mapeo de los nuevos Paths a la bandera del país principal
+    "Italy Path": "it",
+    "Ukraine Path": "ua",
+    "Turkey Path": "tr",
+    "Denmark Path": "dk",
+    "DR Congo Path": "cd",
+    "Iraq Path": "iq"
 }
 
-# --- FUNCIONES AUXILIARES ---
+# --- HELPERS ---
 def flag_url_for(country):
     code = iso_map.get(country)
     if not code: return ""
@@ -178,37 +180,29 @@ def get_flag_image(country_code, size=(20, 15)):
             flag_cache[country_code] = None
     return flag_cache[country_code]
 
-# --- INICIALIZAR SESIÓN ---
+# --- SESIÓN ---
 if "grupos" not in st.session_state:
     st.session_state.grupos = {chr(65+i): [None]*4 for i in range(12)}
 
 if "botones" not in st.session_state:
     st.session_state.botones = {"b1": True, "b2": False, "b3": False, "b4": False}
 
-if "bombo1" not in st.session_state:
-    st.session_state.bombo1 = copy.deepcopy(DATA_BOMBO_1)
-if "bombo2" not in st.session_state:
-    st.session_state.bombo2 = copy.deepcopy(DATA_BOMBO_2)
-if "bombo3" not in st.session_state:
-    st.session_state.bombo3 = copy.deepcopy(DATA_BOMBO_3)
-if "bombo4" not in st.session_state:
-    st.session_state.bombo4 = copy.deepcopy(DATA_BOMBO_4)
+if "bombo1" not in st.session_state: st.session_state.bombo1 = copy.deepcopy(DATA_BOMBO_1)
+if "bombo2" not in st.session_state: st.session_state.bombo2 = copy.deepcopy(DATA_BOMBO_2)
+if "bombo3" not in st.session_state: st.session_state.bombo3 = copy.deepcopy(DATA_BOMBO_3)
+if "bombo4" not in st.session_state: st.session_state.bombo4 = copy.deepcopy(DATA_BOMBO_4)
 
-# --- FUNCIONES DE UI ---
+# --- UI: MOSTRAR BOMBOS ---
 def mostrar_bombo_objetos(bombo):
-    # Versión compacta para la parte inferior
     if not bombo:
         st.caption("Empty Pot / Sorteado")
         return
-        
-    # Mostramos en 3 columnas para ahorrar espacio
     cols = st.columns(3)
     for i, item in enumerate(bombo):
         col = cols[i % 3]
         color = conf_colors.get(item["confederacion"], "#FFFFFF")
         bandera_url = flag_url_for(item["pais"])
         img_html = f"<img src='{bandera_url}' width='16' style='margin-left:4px; vertical-align:middle'/>" if bandera_url else ""
-        
         with col:
             st.markdown(
                 f"<div style='font-size:12px; margin-bottom:2px; display:flex; align-items:center;'>"
@@ -217,32 +211,47 @@ def mostrar_bombo_objetos(bombo):
                 unsafe_allow_html=True
             )
 
-def mostrar_grupos_coloreados():
-    cols = st.columns(6)
-    for i, letra in enumerate(st.session_state.grupos):
-        with cols[i % 6]:
-            html_table = "<table style='border-collapse:collapse; width:100%; margin-bottom:10px;'>"
-            for idx, pais in enumerate(st.session_state.grupos[letra]):
-                if pais:
-                    conf = country_conf.get(pais)
-                    color = conf_colors.get(conf, "#000000")
-                    bandera_url = flag_url_for(pais)
-                    bandera_html = f"<img src='{bandera_url}' width='20' style='margin-left:5px; vertical-align:middle'/>" if bandera_url else ""
-                    
-                    html_table += (
-                        f"<tr>"
-                        f"<td style='padding:4px; border-left:6px solid {color}; font-size:13px; display:flex; justify-content:space-between; align-items:center'>"
-                        f"<div style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{pais}</div>"
-                        f"<div>{bandera_html}</div>"
-                        f"</td>"
-                        f"</tr>"
-                    )
-                else:
-                    html_table += "<tr><td style='padding:4px; color:#ccc; font-size:13px;'>---</td></tr>"
-            html_table += "</table>"
-            st.markdown(f"<div style='text-align:center; font-weight:bold; margin-bottom:2px;'>Group {letra}</div>{html_table}", unsafe_allow_html=True)
+# --- UI: MOSTRAR GRUPOS (CORREGIDO RESPONSIVE) ---
+def renderizar_tabla_grupo(letra):
+    html_table = "<table style='border-collapse:collapse; width:100%; margin-bottom:10px;'>"
+    for idx, pais in enumerate(st.session_state.grupos[letra]):
+        if pais:
+            conf = country_conf.get(pais)
+            color = conf_colors.get(conf, "#000000")
+            bandera_url = flag_url_for(pais)
+            bandera_html = f"<img src='{bandera_url}' width='20' style='margin-left:5px; vertical-align:middle'/>" if bandera_url else ""
+            
+            html_table += (
+                f"<tr>"
+                f"<td style='padding:4px; border-left:6px solid {color}; font-size:13px; display:flex; justify-content:space-between; align-items:center'>"
+                f"<div style='white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{pais}</div>"
+                f"<div>{bandera_html}</div>"
+                f"</td>"
+                f"</tr>"
+            )
+        else:
+            html_table += "<tr><td style='padding:4px; color:#ccc; font-size:13px;'>---</td></tr>"
+    html_table += "</table>"
+    st.markdown(f"<div style='text-align:center; font-weight:bold; margin-bottom:2px;'>Group {letra}</div>{html_table}", unsafe_allow_html=True)
 
-# --- GENERACIÓN DE IMAGEN (PILLOW) ---
+def mostrar_grupos_coloreados():
+    grupos_keys = list(st.session_state.grupos.keys())
+    
+    # FILA 1: A-F (Se renderiza primero, asegurando orden en móvil)
+    cols1 = st.columns(6)
+    for i in range(6):
+        letra = grupos_keys[i]
+        with cols1[i]:
+            renderizar_tabla_grupo(letra)
+            
+    # FILA 2: G-L (Se renderiza después)
+    cols2 = st.columns(6)
+    for i in range(6):
+        letra = grupos_keys[i+6]
+        with cols2[i]:
+            renderizar_tabla_grupo(letra)
+
+# --- PILLOW ---
 def generar_imagen_resumen():
     W, H = 1200, 800
     bg_color = (240, 242, 246) 
@@ -299,12 +308,11 @@ def generar_imagen_resumen():
                     d.text((x + 25, y_pais + 2), pais, fill="black", font=font_country)
             else:
                 d.text((x + 25, y_pais + 2), "---", fill="gray", font=font_country)
-
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()
 
-# --- LÓGICA DE SORTEO (Igual a la anterior, solo callbacks) ---
+# --- LÓGICA ---
 def repartir_bombo1_con_restricciones():
     bombo = st.session_state.bombo1
     if not bombo: return
@@ -472,11 +480,6 @@ def repartir_bombo4_especial():
         st.session_state.botones["b4"] = False
         st.success("Draw Complete!")
 
-# --- CALLBACKS ---
-def repartir_bombo1_click(): repartir_bombo1_con_restricciones()
-def repartir_bombo2_click(): repartir_bombo2()
-def repartir_bombo3_click(): repartir_bombo3()
-def repartir_bombo4_click(): repartir_bombo4_especial()
 def limpiar_grupos_click():
     for letra in st.session_state.grupos: st.session_state.grupos[letra] = [None] * 4
     st.session_state.bombo1 = copy.deepcopy(DATA_BOMBO_1)
@@ -485,16 +488,21 @@ def limpiar_grupos_click():
     st.session_state.bombo4 = copy.deepcopy(DATA_BOMBO_4)
     st.session_state.botones = {"b1": True, "b2": False, "b3": False, "b4": False}
 
-# --- UI LAYOUT ORGANIZADO ---
+def repartir_bombo1_click(): repartir_bombo1_con_restricciones()
+def repartir_bombo2_click(): repartir_bombo2()
+def repartir_bombo3_click(): repartir_bombo3()
+def repartir_bombo4_click(): repartir_bombo4_especial()
 
-# 1. Guía de Confederaciones (HTML Flexbox horizontal responsive)
+# --- MAIN UI FLOW ---
+
+# 1. Guía
 html_conf = '<div class="conf-guide">'
 for conf, color in conf_colors.items():
     html_conf += f'<div class="conf-item"><div class="conf-color-box" style="background-color:{color};"></div>{conf}</div>'
 html_conf += '</div>'
 st.markdown(html_conf, unsafe_allow_html=True)
 
-# 2. Botones de Control (Arriba para fácil acceso en móvil)
+# 2. Controles
 st.markdown("### Controls")
 col_b1, col_b2, col_b3, col_b4, col_b5 = st.columns(5)
 with col_b1: st.button("Draw Pot 1", disabled=not st.session_state.botones["b1"], on_click=repartir_bombo1_click, use_container_width=True)
@@ -503,12 +511,12 @@ with col_b3: st.button("Draw Pot 3", disabled=not st.session_state.botones["b3"]
 with col_b4: st.button("Draw Pot 4", disabled=not st.session_state.botones["b4"], on_click=repartir_bombo4_click, use_container_width=True)
 with col_b5: st.button("🔄 Reset", on_click=limpiar_grupos_click, use_container_width=True)
 
-# 3. Grupos (Resultados - Centro de atención)
+# 3. Grupos
 st.markdown("---")
 st.subheader("📋 Groups")
 mostrar_grupos_coloreados()
 
-# 4. Compartir (Solo al final)
+# 4. Share
 if not st.session_state.bombo4 and not st.session_state.botones["b4"]:
     guardar_simulacion_en_bd(st.session_state.grupos)
     st.markdown("---")
@@ -516,7 +524,7 @@ if not st.session_state.bombo4 and not st.session_state.botones["b4"]:
     col_img, col_share = st.columns([1, 2])
     with col_img:
         img_bytes = generar_imagen_resumen()
-        st.image(img_bytes, use_container_width=True) # Preview en pantalla
+        st.image(img_bytes, use_container_width=True)
         st.download_button(label="📸 Download Image", data=img_bytes, file_name="wc2026_draw_results.png", mime="image/png", use_container_width=True)
     with col_share:
         share_text = "Don't miss this 2026 World Cup draw simulator!"
@@ -529,7 +537,7 @@ if not st.session_state.bombo4 and not st.session_state.botones["b4"]:
         with c2: st.markdown(f"""<a href="{tw_url}" target="_blank"><button style="background-color:#000000; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer;">X (Twitter)</button></a>""", unsafe_allow_html=True)
         with c3: st.markdown(f"""<a href="{fb_url}" target="_blank"><button style="background-color:#1877F2; color:white; border:none; padding:10px; border-radius:5px; width:100%; cursor:pointer; font-weight:bold;">Facebook</button></a>""", unsafe_allow_html=True)
 
-# 5. Bombos (Referencia - Abajo)
+# 5. Bombos restantes
 st.markdown("---")
 st.subheader("🎟 Pots (Remaining)")
 col1, col2, col3, col4 = st.columns(4)
