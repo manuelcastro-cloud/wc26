@@ -18,9 +18,9 @@ def guardar_simulacion_en_bd(grupos):
             "datos": grupos
         }
         supabase.table("simulaciones").insert(payload).execute()
-        st.success("Simulación guardada en la base de datos ✔️")
+        st.success("Simulación completada ✔️")
     except Exception as e:
-        st.error(f"Error al guardar simulación: {e}")
+        st.error(f"Error al completar simulación")
 
 # --- Configuración de la página ---
 st.set_page_config(page_title="WC2026 Draw Simulator", layout="wide")
