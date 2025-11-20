@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw, ImageFont
 from supabase import create_client
 
 # --- SUPABASE ---
-# (Asegúrate de configurar tus credenciales reales aquí o en st.secrets)
+# (Configura tus credenciales reales)
 SUPABASE_URL = "https://gohsdckibmscvvfcxszw.supabase.co"
 SUPABASE_KEY = "sb_publishable_q_7GWwouWZKDrNWsE9MSXQ_qQxlRdNX"
 try:
@@ -127,8 +127,8 @@ DATA_BOMBO_4 = [
     {"pais": "Haiti", "confederacion": "CONCACAF"},
     {"pais": "Ghana", "confederacion": "CAF"},
     {"pais": "Cape Verde", "confederacion": "CAF"},
-    {"pais": "DR Congo Path", "confederacion": "Variable1"}, # ICP1 (RD Congo)
-    {"pais": "Iraq Path", "confederacion": "Variable2"},     # ICP2 (Irak)
+    {"pais": "DR Congo Path", "confederacion": "Variable1"}, # ICP1
+    {"pais": "Iraq Path", "confederacion": "Variable2"},     # ICP2
     {"pais": "Italy Path", "confederacion": "UEFA"},         # UEFA1
     {"pais": "Ukraine Path", "confederacion": "UEFA"},       # UEFA2
     {"pais": "Turkey Path", "confederacion": "UEFA"},        # UEFA3
@@ -150,13 +150,14 @@ iso_map = {
     "Ivory Coast":"ci","Tunisia":"tn","South Africa":"za","Qatar":"qa","Uzbekistan":"uz",
     "Saudi Arabia":"sa","Jordan":"jo","Curacao":"cw","New Zealand":"nz","Haiti":"ht",
     "Ghana":"gh","Cape Verde":"cv",
-    # Mapeo de los nuevos Paths a la bandera del país principal
-    "Italy Path": "it",
-    "Ukraine Path": "ua",
-    "Turkey Path": "tr",
-    "Denmark Path": "dk",
-    "DR Congo Path": "cd",
-    "Iraq Path": "iq"
+    # Paths Europeos (Bandera Europa)
+    "Italy Path": "eu",
+    "Ukraine Path": "eu",
+    "Turkey Path": "eu",
+    "Denmark Path": "eu",
+    # Paths Intercontinentales (Bandera ONU / Mundo para representar FIFA)
+    "DR Congo Path": "un",
+    "Iraq Path": "un"
 }
 
 # --- HELPERS ---
@@ -211,7 +212,7 @@ def mostrar_bombo_objetos(bombo):
                 unsafe_allow_html=True
             )
 
-# --- UI: MOSTRAR GRUPOS (CORREGIDO RESPONSIVE) ---
+# --- UI: MOSTRAR GRUPOS (RESPONSIVE) ---
 def renderizar_tabla_grupo(letra):
     html_table = "<table style='border-collapse:collapse; width:100%; margin-bottom:10px;'>"
     for idx, pais in enumerate(st.session_state.grupos[letra]):
@@ -237,14 +238,14 @@ def renderizar_tabla_grupo(letra):
 def mostrar_grupos_coloreados():
     grupos_keys = list(st.session_state.grupos.keys())
     
-    # FILA 1: A-F (Se renderiza primero, asegurando orden en móvil)
+    # FILA 1: A-F
     cols1 = st.columns(6)
     for i in range(6):
         letra = grupos_keys[i]
         with cols1[i]:
             renderizar_tabla_grupo(letra)
             
-    # FILA 2: G-L (Se renderiza después)
+    # FILA 2: G-L
     cols2 = st.columns(6)
     for i in range(6):
         letra = grupos_keys[i+6]
